@@ -1,0 +1,55 @@
+/*
+ * Tide palette — design tokens.
+ * Values are space-separated RGB channels so Tailwind opacity modifiers work:
+ *   color: rgb(var(--c-accent) / 0.5)
+ * One accent (teal); neutrals stay quiet; income/expense/warn are muted semantics.
+ */
+:root {
+  --c-paper: 246 247 245;     /* #F6F7F5 */
+  --c-surface: 255 255 255;   /* #FFFFFF */
+  --c-ink: 26 29 33;          /* #1A1D21 */
+  --c-muted: 110 122 130;     /* #6E7A82 */
+  --c-hairline: 227 231 229;  /* #E3E7E5 */
+  --c-accent: 20 119 107;     /* #14776B */
+
+  --c-income: 46 125 91;      /* #2E7D5B */
+  --c-expense: 180 68 60;     /* #B4443C */
+  --c-warn: 181 134 43;       /* #B5862B */
+
+  --shadow-card: 0 1px 2px rgb(26 29 33 / 0.04), 0 1px 3px rgb(26 29 33 / 0.03);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 250ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  --c-paper: 19 22 24;        /* #131618 */
+  --c-surface: 27 31 34;      /* #1B1F22 */
+  --c-ink: 232 234 233;       /* #E8EAE9 */
+  --c-muted: 138 148 155;     /* #8A949B */
+  --c-hairline: 42 47 51;     /* #2A2F33 */
+  --c-accent: 61 161 146;     /* #3DA192 */
+
+  --c-income: 75 165 124;
+  --c-expense: 209 106 98;
+  --c-warn: 199 158 74;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
