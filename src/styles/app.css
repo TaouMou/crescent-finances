@@ -38,23 +38,17 @@
 @layer components {
   .card {
     @apply rounded-card;
-    /* Multi-hue bokeh sheen drawn from the palette (teal accent, warm amber,
-       green) in different corners — richer depth, still corner-confined so
-       text/data stay clean. */
-    background:
-      radial-gradient(120% 120% at 0% 0%, rgb(var(--c-accent) / 0.12), transparent 50%),
-      radial-gradient(115% 115% at 100% 0%, rgb(var(--c-warn) / 0.07), transparent 55%),
-      radial-gradient(125% 125% at 100% 100%, rgb(var(--c-income) / 0.09), transparent 55%),
-      rgb(var(--c-surface));
+    /* Surface + depth; the bokeh layer is generated per-card (Card.svelte),
+       randomized on each load. Intensity is theme-aware via these vars. */
+    background-color: rgb(var(--c-surface));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
+    --bokeh-a1: 0.1;
+    --bokeh-a2: 0.06;
   }
   .dark .card {
-    background:
-      radial-gradient(120% 120% at 0% 0%, rgb(var(--c-accent) / 0.20), transparent 50%),
-      radial-gradient(115% 115% at 100% 0%, rgb(var(--c-warn) / 0.11), transparent 55%),
-      radial-gradient(125% 125% at 100% 100%, rgb(var(--c-income) / 0.14), transparent 55%),
-      rgb(var(--c-surface));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
+    --bokeh-a1: 0.16;
+    --bokeh-a2: 0.1;
   }
 
   .hairline {
