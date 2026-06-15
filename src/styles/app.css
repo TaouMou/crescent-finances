@@ -37,7 +37,7 @@
 
 @layer components {
   .card {
-    @apply rounded-card border border-hairline bg-surface;
+    @apply rounded-card bg-surface;
     box-shadow: var(--shadow-card);
   }
 

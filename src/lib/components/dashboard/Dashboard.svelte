@@ -50,7 +50,7 @@
       <Card>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 class="text-sm font-medium text-ink">Net over time</h2>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
             <DateField bind:value={toStr} min={fromStr} label="End date" />

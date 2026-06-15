@@ -88,7 +88,7 @@
     class="press inline-flex h-8 items-center gap-1.5 rounded-control border border-hairline bg-surface px-2.5 text-xs font-medium text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
   >
     <CalendarDots class="h-3.5 w-3.5 shrink-0" />
-    <span class="tnum">{display}</span>
+    <span class="tnum whitespace-nowrap">{display}</span>
   </button>
 
   {#if open}
