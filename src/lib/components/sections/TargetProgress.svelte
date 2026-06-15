@@ -15,12 +15,12 @@
 <div class="space-y-4">
   {#each items as t (t.id)}
     <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 rounded-[3px]" style={`background:${t.color}`}></span>
-          <span class="text-sm text-ink">{t.name}</span>
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex min-w-0 items-center gap-2">
+          <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${t.color}`}></span>
+          <span class="truncate text-sm text-ink">{t.name}</span>
         </div>
-        <span class="tnum text-sm text-muted">
+        <span class="tnum shrink-0 whitespace-nowrap text-sm text-muted">
           {fmt(t.current)} <span class="text-muted/60">/ {fmt(t.target)}</span>
         </span>
       </div>

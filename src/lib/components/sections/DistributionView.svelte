@@ -22,20 +22,20 @@
 </script>
 
 <div class="space-y-5">
-  <div class="flex items-baseline justify-between">
-    <div>
-      <p class="text-sm text-muted">Source · {group.source}</p>
+  <div class="flex items-baseline justify-between gap-2">
+    <div class="min-w-0">
+      <p class="truncate text-sm text-muted">Source · {group.source}</p>
       <p class="tnum mt-0.5 text-xl font-medium text-ink">{fmt(group.total)}</p>
     </div>
     <span
-      class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+      class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
         balanced ? 'bg-income/12 text-income' : 'bg-warn/12 text-warn'
       }`}
     >
       {#if balanced}
-        <Check class="h-3.5 w-3.5" /> Balanced · 100%
+        <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
       {:else}
-        <Info class="h-3.5 w-3.5" /> {formatPercent(plannedPctSum, locale)} allocated
+        <Info class="h-3.5 w-3.5 shrink-0" /> {formatPercent(plannedPctSum, locale)} allocated
       {/if}
     </span>
   </div>

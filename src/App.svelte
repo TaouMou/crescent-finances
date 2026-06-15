@@ -17,7 +17,7 @@
   <!-- Mobile drawer (full-width overlay) -->
   {#if mobileOpen}
     <div
-      class="fixed inset-0 z-40 h-full w-full md:hidden"
+      class="fixed inset-0 z-40 h-full w-full overscroll-contain md:hidden"
       transition:fly={{ x: -360, duration: 200, opacity: 1 }}
     >
       <Sidebar active="dashboard" fullWidth onClose={() => (mobileOpen = false)} />
@@ -26,7 +26,7 @@
 
   <div class="flex min-w-0 flex-1 flex-col">
     <Topbar title="Dashboard" period="June 2026" onMenu={() => (mobileOpen = true)} />
-    <main class="flex-1 overflow-y-auto">
+    <main class={`flex-1 ${mobileOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <Dashboard />
     </main>
   </div>
