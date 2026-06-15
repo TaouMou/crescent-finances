@@ -49,7 +49,7 @@
     <div class="space-y-5 lg:col-span-2">
       <Card>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 class="text-sm font-medium text-ink">Net over time</h2>
+          <h2 class="card-title">Net over time</h2>
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
@@ -62,7 +62,7 @@
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Spending by category</h2>
+          <h2 class="card-title">Spending by category</h2>
           <span class="text-xs text-muted">June 2026</span>
         </div>
         <SpendingByCategory data={spendingByCategory} currency={demoCurrency} locale={demoLocale} />
@@ -73,7 +73,7 @@
     <div class="space-y-5">
       <Card class="ring-accent/20">
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">{distribution.name}</h2>
+          <h2 class="card-title">{distribution.name}</h2>
           <span class="text-xs text-muted">Distribution</span>
         </div>
         <DistributionView group={distribution} currency={demoCurrency} locale={demoLocale} />
@@ -81,7 +81,7 @@
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Goals</h2>
+          <h2 class="card-title">Goals</h2>
           <span class="text-xs text-muted">Targets</span>
         </div>
         <TargetProgress items={targets} currency={demoCurrency} locale={demoLocale} />
@@ -89,7 +89,7 @@
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Anomalies</h2>
+          <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
         </div>
         <AnomaliesList data={anomalies} />

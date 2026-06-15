@@ -45,6 +45,12 @@
     @apply border-hairline;
   }
 
+  /* Card/section heading: clearly distinct from body text (larger, tighter,
+     full-ink) while staying sentence case and within two font weights. */
+  .card-title {
+    @apply text-base font-medium tracking-tight text-ink;
+  }
+
   /* Tactile press feedback for interactive controls: quick scale-down on
      active, smooth hover/colour transitions, no mobile tap-highlight flash. */
   .press {
