@@ -7,8 +7,7 @@
     Settings,
     ChevronRight,
     Moon,
-    Sun,
-    Lock
+    Sun
   } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
@@ -48,14 +47,6 @@
     </div>
     {#if !collapsed}
       <span class="truncate text-sm font-medium text-ink">Crescent</span>
-      <button
-        class="ml-auto rounded-control p-1.5 text-muted hover:bg-ink/5 hover:text-ink"
-        title="Collapse sidebar"
-        onclick={() => (collapsed = true)}
-        aria-label="Collapse sidebar"
-      >
-        <ChevronRight class="h-4 w-4 rotate-180" />
-      </button>
     {/if}
   </div>
 
@@ -140,19 +131,16 @@
       {/if}
       {#if !collapsed}<span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
     </button>
-    {#if collapsed}
-      <button
-        class="grid h-9 w-9 place-items-center rounded-control text-muted transition-colors hover:bg-ink/5 hover:text-ink"
-        title="Expand sidebar"
-        onclick={() => (collapsed = false)}
-        aria-label="Expand sidebar"
-      >
-        <ChevronRight class="h-4 w-4" />
-      </button>
-    {:else}
-      <span class="ml-auto flex items-center gap-1 px-1 text-xs text-muted/70" title="Locked & encrypted">
-        <Lock class="h-3.5 w-3.5" strokeWidth={1.75} />
-      </span>
-    {/if}
+    <button
+      class={cn(
+        'grid h-9 w-9 place-items-center rounded-control text-muted transition-colors hover:bg-ink/5 hover:text-ink',
+        !collapsed && 'ml-auto'
+      )}
+      title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      onclick={() => (collapsed = !collapsed)}
+      aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+    >
+      <ChevronRight class={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
+    </button>
   </div>
 </aside>

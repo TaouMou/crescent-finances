@@ -43,7 +43,8 @@
           {
             width,
             height,
-            cursor: { points: { size: 6 }, y: false },
+            // Hover readout only — no drag-to-zoom (timeframe is set via selectors).
+            cursor: { points: { size: 6 }, y: false, drag: { x: false, y: false, setScale: false } },
             legend: { show: false },
             scales: { x: { time: true } },
             axes: [
