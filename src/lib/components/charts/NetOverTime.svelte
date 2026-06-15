@@ -42,6 +42,12 @@
       const ink = `rgb(${channels('--c-muted', '110 122 130')})`;
       const grid = `rgb(${channels('--c-hairline', '227 231 229')})`;
 
+      // The light accent is a deep teal, so the same opacity reads darker than in
+      // dark mode — keep the area fill very faint in light mode.
+      const isDark = document.documentElement.classList.contains('dark');
+      const fillTop = isDark ? 0.12 : 0.05;
+      const fillMid = isDark ? 0.03 : 0.012;
+
       const xs = data.map((d) => d.t);
       const ys = data.map((d) => d.value / 100);
 
@@ -84,8 +90,8 @@
                 fill: (u) => {
                   const ctx = u.ctx;
                   const g = ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height);
-                  g.addColorStop(0, `rgb(${accentCh} / 0.10)`);
-                  g.addColorStop(0.7, `rgb(${accentCh} / 0.02)`);
+                  g.addColorStop(0, `rgb(${accentCh} / ${fillTop})`);
+                  g.addColorStop(0.65, `rgb(${accentCh} / ${fillMid})`);
                   g.addColorStop(1, `rgb(${accentCh} / 0)`);
                   return g;
                 },
