@@ -22,22 +22,22 @@
 </script>
 
 <div class="space-y-5">
-  <div class="flex items-baseline justify-between gap-2">
-    <div class="min-w-0">
-      <p class="truncate text-sm text-muted">Source · {group.source}</p>
-      <p class="tnum mt-0.5 text-xl font-medium text-ink">{fmt(group.total)}</p>
+  <div class="space-y-1">
+    <p class="text-sm text-muted">Source · {group.source}</p>
+    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+      <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
+      <span
+        class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
+          balanced ? 'bg-income/12 text-income' : 'bg-warn/12 text-warn'
+        }`}
+      >
+        {#if balanced}
+          <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
+        {:else}
+          <Info class="h-3.5 w-3.5 shrink-0" /> {formatPercent(plannedPctSum, locale)} allocated
+        {/if}
+      </span>
     </div>
-    <span
-      class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-        balanced ? 'bg-income/12 text-income' : 'bg-warn/12 text-warn'
-      }`}
-    >
-      {#if balanced}
-        <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
-      {:else}
-        <Info class="h-3.5 w-3.5 shrink-0" /> {formatPercent(plannedPctSum, locale)} allocated
-      {/if}
-    </span>
   </div>
 
   <!-- Planned vs actual stacked bars (the signature comparison) -->
