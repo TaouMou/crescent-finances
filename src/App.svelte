@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fly, fade } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
@@ -14,18 +14,13 @@
     <Sidebar active="dashboard" bind:collapsed />
   </div>
 
-  <!-- Mobile drawer -->
+  <!-- Mobile drawer (full-width overlay) -->
   {#if mobileOpen}
-    <div class="fixed inset-0 z-40 md:hidden">
-      <button
-        class="absolute inset-0 bg-ink/40"
-        aria-label="Close menu"
-        transition:fade={{ duration: 150 }}
-        onclick={() => (mobileOpen = false)}
-      ></button>
-      <div class="absolute left-0 top-0 h-full" transition:fly={{ x: -260, duration: 200, opacity: 1 }}>
-        <Sidebar active="dashboard" />
-      </div>
+    <div
+      class="fixed inset-0 z-40 h-full w-full md:hidden"
+      transition:fly={{ x: -360, duration: 200, opacity: 1 }}
+    >
+      <Sidebar active="dashboard" fullWidth onClose={() => (mobileOpen = false)} />
     </div>
   {/if}
 
