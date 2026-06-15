@@ -55,7 +55,7 @@
               bind:value={fromStr}
               max={toStr}
               aria-label="Start date"
-              class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink [color-scheme:light] focus-visible:outline-none dark:[color-scheme:dark]"
+              class="h-8 rounded-control bg-ink/[0.04] px-2 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
             />
             <span class="text-muted">–</span>
             <input
@@ -63,7 +63,7 @@
               bind:value={toStr}
               min={fromStr}
               aria-label="End date"
-              class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink [color-scheme:light] focus-visible:outline-none dark:[color-scheme:dark]"
+              class="h-8 rounded-control bg-ink/[0.04] px-2 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
             />
             <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
           </div>

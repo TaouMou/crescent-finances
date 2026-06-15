@@ -84,7 +84,8 @@
                 fill: (u) => {
                   const ctx = u.ctx;
                   const g = ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height);
-                  g.addColorStop(0, `rgb(${accentCh} / 0.16)`);
+                  g.addColorStop(0, `rgb(${accentCh} / 0.10)`);
+                  g.addColorStop(0.7, `rgb(${accentCh} / 0.02)`);
                   g.addColorStop(1, `rgb(${accentCh} / 0)`);
                   return g;
                 },
