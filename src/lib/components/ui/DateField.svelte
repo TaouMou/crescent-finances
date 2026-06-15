@@ -7,21 +7,49 @@
     max,
     label
   }: { value: string; min?: string; max?: string; label: string } = $props();
+
+  let input: HTMLInputElement;
+
+  // Show a clean, on-brand date instead of the browser's raw "mm/dd/yyyy".
+  const display = $derived(
+    value
+      ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      : 'Select date'
+  );
+
+  function open() {
+    // showPicker() must run from a user gesture (the click). Fall back to focus.
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  }
 </script>
 
-<!--
-  The native date input draws its own calendar glyph that ignores `color`.
-  We hide it (kept transparent but still clickable on the right) and overlay
-  a themed icon so it follows the muted token and adapts to dark mode.
--->
-<div class="relative inline-flex items-center">
+<div class="relative inline-flex">
+  <button
+    type="button"
+    onclick={open}
+    aria-label={label}
+    class="press inline-flex h-8 items-center gap-1.5 rounded-control bg-ink/[0.04] px-2.5 text-xs font-medium text-muted hover:bg-ink/[0.08] hover:text-ink active:bg-ink/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+  >
+    <CalendarBlank class="h-3.5 w-3.5 shrink-0" />
+    <span class="tnum">{display}</span>
+  </button>
+  <!-- Real control: visually hidden but rendered so the native picker anchors here. -->
   <input
+    bind:this={input}
     type="date"
     bind:value
     {min}
     {max}
-    aria-label={label}
-    class="date-native h-8 w-[150px] rounded-control bg-ink/[0.04] px-2 pr-8 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
+    tabindex="-1"
+    aria-hidden="true"
+    class="pointer-events-none absolute bottom-0 left-3 h-px w-px opacity-0"
   />
-  <CalendarBlank class="pointer-events-none absolute right-2 h-4 w-4 text-muted" />
 </div>

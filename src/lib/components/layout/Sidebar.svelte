@@ -55,7 +55,7 @@
       <a
         href={`#${item.id}`}
         class={cn(
-          'flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink',
+          'flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
           active === item.id && 'bg-accent/10 text-accent hover:bg-accent/12 hover:text-accent'
         )}
         title={item.label}
@@ -67,7 +67,7 @@
 
     <!-- Plan: expands to user-defined section groups -->
     <button
-      class="flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+      class="flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
       onclick={() => (planOpen = !planOpen)}
       title="Plan"
     >
@@ -82,13 +82,13 @@
         {#each planGroups as g (g.id)}
           <a
             href={`#plan/${g.id}`}
-            class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+            class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             <span class="truncate">{g.label}</span>
           </a>
         {/each}
         <button
-          class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink"
+          class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         >
           <span class="truncate">+ New group</span>
         </button>
@@ -100,7 +100,7 @@
     {#each footerNav as item (item.id)}
       <a
         href={`#${item.id}`}
-        class="flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+        class="flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         title={item.label}
       >
         <item.icon class="h-[18px] w-[18px] shrink-0" />
@@ -117,7 +117,7 @@
   >
     <button
       class={cn(
-        'flex h-9 items-center rounded-control text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink',
+        'press flex h-9 items-center rounded-control text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10',
         collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5'
       )}
       onclick={() => theme.toggle()}
@@ -133,7 +133,7 @@
     </button>
     <button
       class={cn(
-        'grid h-9 w-9 place-items-center rounded-control text-muted transition-colors hover:bg-ink/5 hover:text-ink',
+        'press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10',
         !collapsed && 'ml-auto'
       )}
       title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

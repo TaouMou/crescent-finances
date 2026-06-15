@@ -45,16 +45,20 @@
     @apply border-hairline;
   }
 
-  /* Hide the browser's calendar glyph but keep its click target on the right,
-     so the themed overlay icon (DateField.svelte) is what shows. */
-  .date-native::-webkit-calendar-picker-indicator {
-    position: absolute;
-    inset: 0 0 0 auto;
-    width: 2rem;
-    margin: 0;
-    padding: 0;
-    opacity: 0;
-    cursor: pointer;
+  /* Tactile press feedback for interactive controls: quick scale-down on
+     active, smooth hover/colour transitions, no mobile tap-highlight flash. */
+  .press {
+    @apply transition duration-150 ease-out;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .press:active {
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active {
+    transform: none;
   }
 }
 
