@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Search, ChevronDown, Menu } from 'lucide-svelte';
+  import { MagnifyingGlass, CaretDown, List } from 'phosphor-svelte';
 
   let {
     title = 'Dashboard',
@@ -14,7 +14,7 @@
     onclick={() => onMenu?.()}
     aria-label="Open menu"
   >
-    <Menu class="h-5 w-5" strokeWidth={1.75} />
+    <List class="h-5 w-5" />
   </button>
   <h1 class="text-base font-medium text-ink">{title}</h1>
 
@@ -23,13 +23,13 @@
       class="flex h-9 items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm text-ink transition-colors hover:bg-ink/5"
     >
       <span class="tnum">{period}</span>
-      <ChevronDown class="h-4 w-4 text-muted" strokeWidth={1.75} />
+      <CaretDown class="h-4 w-4 text-muted" />
     </button>
     <button
       class="grid h-9 w-9 place-items-center rounded-control border border-hairline bg-surface text-muted transition-colors hover:bg-ink/5 hover:text-ink"
       aria-label="Search"
     >
-      <Search class="h-[18px] w-[18px]" strokeWidth={1.75} />
+      <MagnifyingGlass class="h-[18px] w-[18px]" />
     </button>
   </div>
 </header>

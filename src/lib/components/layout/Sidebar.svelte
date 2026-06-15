@@ -1,14 +1,14 @@
 <script lang="ts">
   import {
-    LayoutDashboard,
-    ArrowLeftRight,
-    PieChart,
-    Upload,
-    Settings,
-    ChevronRight,
+    SquaresFour,
+    ArrowsLeftRight,
+    ChartPieSlice,
+    UploadSimple,
+    GearSix,
+    CaretRight,
     Moon,
     Sun
-  } from 'lucide-svelte';
+  } from 'phosphor-svelte';
   import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { cn } from '$lib/utils/cn';
@@ -18,8 +18,8 @@
 
   // Notion-style nested navigation. "Plan" expands into user-defined section groups.
   const nav = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight }
+    { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
+    { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight }
   ];
 
   let planOpen = $state(true);
@@ -30,8 +30,8 @@
   ];
 
   const footerNav = [
-    { id: 'import', label: 'Import CSV', icon: Upload },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'import', label: 'Import CSV', icon: UploadSimple },
+    { id: 'settings', label: 'Settings', icon: GearSix }
   ];
 </script>
 
@@ -60,7 +60,7 @@
         )}
         title={item.label}
       >
-        <item.icon class="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+        <item.icon class="h-[18px] w-[18px] shrink-0" />
         {#if !collapsed}<span class="truncate">{item.label}</span>{/if}
       </a>
     {/each}
@@ -71,10 +71,10 @@
       onclick={() => (planOpen = !planOpen)}
       title="Plan"
     >
-      <PieChart class="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+      <ChartPieSlice class="h-[18px] w-[18px] shrink-0" />
       {#if !collapsed}
         <span class="truncate">Plan</span>
-        <ChevronRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} />
+        <CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} />
       {/if}
     </button>
     {#if planOpen && !collapsed}
@@ -103,7 +103,7 @@
         class="flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink"
         title={item.label}
       >
-        <item.icon class="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+        <item.icon class="h-[18px] w-[18px] shrink-0" />
         {#if !collapsed}<span class="truncate">{item.label}</span>{/if}
       </a>
     {/each}
@@ -125,9 +125,9 @@
       aria-label="Toggle theme"
     >
       {#if $theme === 'dark'}
-        <Sun class="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+        <Sun class="h-[18px] w-[18px] shrink-0" />
       {:else}
-        <Moon class="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+        <Moon class="h-[18px] w-[18px] shrink-0" />
       {/if}
       {#if !collapsed}<span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
     </button>
@@ -140,7 +140,7 @@
       onclick={() => (collapsed = !collapsed)}
       aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
     >
-      <ChevronRight class={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
+      <CaretRight class={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
     </button>
   </div>
 </aside>

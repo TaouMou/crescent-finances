@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Calendar } from 'lucide-svelte';
+  import { CalendarBlank } from 'phosphor-svelte';
 
   let {
     value = $bindable(),
@@ -23,5 +23,5 @@
     aria-label={label}
     class="date-native h-8 w-[150px] rounded-control bg-ink/[0.04] px-2 pr-8 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
   />
-  <Calendar class="pointer-events-none absolute right-2 h-4 w-4 text-muted" strokeWidth={1.75} />
+  <CalendarBlank class="pointer-events-none absolute right-2 h-4 w-4 text-muted" />
 </div>

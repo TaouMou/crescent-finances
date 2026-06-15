@@ -17,7 +17,7 @@ a config file); and get warned when a spending category is abnormally high.
 - **Encryption:** Web Crypto (AES-GCM 256; key from PBKDF2 ≥210k iterations) — in a Web Worker.
 - **CSV parsing:** PapaParse, lazy-loaded and run inside a Web Worker.
 - **Charts:** uPlot (lazy-loaded on the dashboard) + hand-rolled SVG for sparklines.
-- **UI:** Tailwind + Bits UI primitives, Inter (self-hosted), Lucide icons.
+- **UI:** Tailwind + Bits UI primitives, Inter (self-hosted), Phosphor icons.
 
 ## Design — Tide palette
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, Info } from 'lucide-svelte';
+  import { Check, Info } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup } from '$lib/seed/dashboard';
 
@@ -33,9 +33,9 @@
       }`}
     >
       {#if balanced}
-        <Check class="h-3.5 w-3.5" strokeWidth={2} /> Balanced · 100%
+        <Check class="h-3.5 w-3.5" /> Balanced · 100%
       {:else}
-        <Info class="h-3.5 w-3.5" strokeWidth={2} /> {formatPercent(plannedPctSum, locale)} allocated
+        <Info class="h-3.5 w-3.5" /> {formatPercent(plannedPctSum, locale)} allocated
       {/if}
     </span>
   </div>
