@@ -20,15 +20,19 @@
 
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
   {#each cards as c (c.label)}
-    <Card class="flex flex-col gap-2.5">
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-muted">{c.label}</span>
-        <c.icon class={`h-4 w-4 ${c.tone}`} />
+    <Card class="flex h-full flex-col gap-2.5">
+      <div class="flex items-start justify-between gap-2">
+        <span class="text-sm leading-tight text-muted">{c.label}</span>
+        <c.icon class={`mt-0.5 h-4 w-4 shrink-0 ${c.tone}`} />
       </div>
-      <span class="tnum whitespace-nowrap text-lg font-medium text-ink md:text-xl">{c.value}</span>
-      {#if c.spark}
-        <Sparkline values={trend} width={140} height={24} />
-      {/if}
+      <div class="mt-auto">
+        <span class="tnum block whitespace-nowrap text-lg font-medium text-ink md:text-xl">{c.value}</span>
+        {#if c.spark}
+          <div class="mt-2.5">
+            <Sparkline values={trend} width={140} height={24} />
+          </div>
+        {/if}
+      </div>
     </Card>
   {/each}
 </div>

@@ -85,7 +85,7 @@
     aria-label={label}
     aria-haspopup="dialog"
     aria-expanded={open}
-    class="press inline-flex h-8 items-center gap-1.5 rounded-control bg-ink/[0.04] px-2.5 text-xs font-medium text-muted hover:bg-ink/[0.08] hover:text-ink active:bg-ink/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+    class="press inline-flex h-8 items-center gap-1.5 rounded-control border border-hairline bg-surface px-2.5 text-xs font-medium text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
   >
     <CalendarDots class="h-3.5 w-3.5 shrink-0" />
     <span class="tnum">{display}</span>
