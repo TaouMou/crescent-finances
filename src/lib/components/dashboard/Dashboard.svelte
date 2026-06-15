@@ -99,7 +99,7 @@
         <DistributionView group={distribution} currency={demoCurrency} locale={demoLocale} />
       </Card>
 
-      <Card>
+      <Card tint="--c-income">
         <div class="mb-4 flex items-baseline justify-between">
           <h2 class="card-title">Goals</h2>
           <span class="text-xs text-muted">Targets</span>
@@ -107,7 +107,7 @@
         <TargetProgress items={targets} currency={demoCurrency} locale={demoLocale} />
       </Card>
 
-      <Card>
+      <Card tint="--c-warn">
         <div class="mb-4 flex items-baseline justify-between">
           <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
