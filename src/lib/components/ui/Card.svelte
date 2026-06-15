@@ -16,13 +16,15 @@
   // reads as a faint sheen. Corners keep the centre clear for text/data.
   const palette = ['--c-accent', '--c-income', '--c-expense', '--c-warn'];
   const corner = () => ({
-    x: pick([rnd(-12, 28), rnd(72, 112)]),
-    y: pick([rnd(-12, 28), rnd(72, 112)])
+    x: pick([rnd(-30, 15), rnd(85, 130)]),
+    y: pick([rnd(-30, 15), rnd(85, 130)])
   });
   const blob = (aVar: string) => {
     const { x, y } = corner();
-    const s = rnd(95, 140);
-    return `radial-gradient(${s}% ${s}% at ${x}% ${y}%, rgb(var(${pick(palette)}) / var(${aVar})), transparent ${rnd(52, 62)}%)`;
+    // Large radius + far-out transparent stop = a soft, gradual wash (no visible
+    // colour edge).
+    const s = rnd(170, 240);
+    return `radial-gradient(${s}% ${s}% at ${x}% ${y}%, rgb(var(${pick(palette)}) / var(${aVar})), transparent ${rnd(80, 98)}%)`;
   };
   const bokeh = [blob('--bokeh-a1'), blob('--bokeh-a2')].join(', ');
 </script>
