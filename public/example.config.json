@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "name": "Example configuration",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "currency": "EUR",
+    "locale": "fr-FR"
+  },
+  "accounts": [
+    { "id": "acc-checking", "name": "Checking", "kind": "bank" },
+    { "id": "acc-savings", "name": "Savings", "kind": "savings" },
+    { "id": "acc-cash", "name": "Cash", "kind": "cash" }
+  ],
+  "assetPools": [
+    { "id": "pool-liquid", "name": "Liquid", "accountIds": ["acc-checking", "acc-cash"] },
+    { "id": "pool-reserves", "name": "Reserves", "accountIds": ["acc-savings"] }
+  ],
+  "categories": [
+    { "id": "cat-groceries", "name": "Groceries", "color": "#14776B", "parentId": null },
+    { "id": "cat-housing", "name": "Housing", "color": "#3D6B7A", "parentId": null },
+    { "id": "cat-transport", "name": "Transport", "color": "#7A8B5A", "parentId": null },
+    { "id": "cat-dining", "name": "Dining", "color": "#A8703E", "parentId": null },
+    { "id": "cat-utilities", "name": "Utilities", "color": "#6E7A82", "parentId": null },
+    { "id": "cat-health", "name": "Health", "color": "#B4443C", "parentId": null },
+    { "id": "cat-income", "name": "Income", "color": "#2E7D5B", "parentId": null }
+  ],
+  "tags": [
+    { "id": "tag-recurring", "name": "Recurring", "color": "#6E7A82" },
+    { "id": "tag-review", "name": "Review", "color": "#B5862B" }
+  ],
+  "rules": [
+    {
+      "id": "rule-groceries",
+      "priority": 10,
+      "enabled": true,
+      "match": { "field": "label", "type": "keyword", "value": "SUPERMARCHE", "caseSensitive": false },
+      "setCategoryId": "cat-groceries"
+    },
+    {
+      "id": "rule-housing",
+      "priority": 20,
+      "enabled": true,
+      "match": { "field": "label", "type": "keyword", "value": "LOYER", "caseSensitive": false },
+      "setCategoryId": "cat-housing"
+    },
+    {
+      "id": "rule-transport",
+      "priority": 30,
+      "enabled": true,
+      "match": { "field": "label", "type": "regex", "value": "STATION|TRANSPORT", "caseSensitive": false },
+      "setCategoryId": "cat-transport"
+    }
+  ],
+  "sectionGroups": [
+    {
+      "id": "grp-plan",
+      "name": "Monthly plan",
+      "order": 0,
+      "kind": "distribution",
+      "sectionIds": ["sec-save", "sec-essentials"]
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec-save",
+      "name": "Set aside",
+      "color": "#14776B",
+      "groupId": "grp-plan",
+      "order": 0,
+      "calc": { "type": "percentage", "of": { "kind": "income" }, "percent": 20 }
+    },
+    {
+      "id": "sec-essentials",
+      "name": "Everything else",
+      "color": "#A8703E",
+      "groupId": "grp-plan",
+      "order": 1,
+      "calc": { "type": "remainder" }
+    },
+    {
+      "id": "sec-reserve",
+      "name": "Reserve target",
+      "color": "#3D6B7A",
+      "groupId": null,
+      "order": 0,
+      "calc": { "type": "target", "targetAmount": 800000, "targetDate": "2026-12-01", "assetPoolId": "pool-reserves" }
+    }
+  ],
+  "importProfiles": [
+    {
+      "id": "profile-sample",
+      "name": "Sample bank (semicolon)",
+      "delimiter": ";",
+      "encoding": "utf-8",
+      "hasHeader": true,
+      "dateFormat": "dd/MM/yyyy",
+      "decimal": ",",
+      "thousands": ".",
+      "mapping": { "date": "Date", "debit": "Debit", "credit": "Credit", "label": "Libelle" },
+      "accountId": "acc-checking"
+    }
+  ],
+  "settings": {
+    "anomaly": { "baselineMonths": 6, "thresholdPct": 40, "minAbsolute": 5000, "madK": 3 }
+  }
+}
