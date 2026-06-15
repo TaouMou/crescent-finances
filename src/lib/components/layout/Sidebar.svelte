@@ -116,6 +116,8 @@
     {/if}
   </nav>
 
+  <!-- Footer actions: same row layout as nav, so collapsing only hides labels
+       (never changes the footer height or shifts the buttons). -->
   <div class="touch-none space-y-0.5 px-2.5 py-2">
     {#each footerNav as item (item.id)}
       <a
@@ -128,19 +130,8 @@
         {#if !collapsed}<span class="truncate">{item.label}</span>{/if}
       </a>
     {/each}
-  </div>
-
-  <div
-    class={cn(
-      'flex touch-none border-t border-hairline px-2.5 py-2.5',
-      collapsed ? 'flex-col items-center gap-1' : 'items-center gap-1'
-    )}
-  >
     <button
-      class={cn(
-        'press flex h-9 items-center rounded-control text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-        collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5'
-      )}
+      class="press flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
       onclick={() => theme.toggle()}
       title="Toggle theme"
       aria-label="Toggle theme"
@@ -152,11 +143,16 @@
       {/if}
       {#if !collapsed}<span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
     </button>
-    {#if !fullWidth}
+  </div>
+
+  {#if !fullWidth}
+    <!-- Collapse toggle: a fixed single-row bar; only the icon's alignment
+         changes between states, so nothing above it ever moves. -->
+    <div class="flex touch-none border-t border-hairline px-2.5 py-2">
       <button
         class={cn(
           'press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-          !collapsed && 'ml-auto'
+          collapsed ? 'mx-auto' : 'ml-auto'
         )}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         onclick={() => (collapsed = !collapsed)}
@@ -164,6 +160,6 @@
       >
         <CaretRight class={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
       </button>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </aside>
