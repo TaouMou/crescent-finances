@@ -1,5 +1,6 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
+  import DateField from '$lib/components/ui/DateField.svelte';
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
@@ -50,21 +51,9 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 class="text-sm font-medium text-ink">Net over time</h2>
           <div class="flex items-center gap-2">
-            <input
-              type="date"
-              bind:value={fromStr}
-              max={toStr}
-              aria-label="Start date"
-              class="h-8 rounded-control bg-ink/[0.04] px-2 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
-            />
+            <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
-            <input
-              type="date"
-              bind:value={toStr}
-              min={fromStr}
-              aria-label="End date"
-              class="h-8 rounded-control bg-ink/[0.04] px-2 text-xs font-medium text-muted [color-scheme:light] transition-colors hover:bg-ink/[0.07] focus-visible:outline-none dark:[color-scheme:dark]"
-            />
+            <DateField bind:value={toStr} min={fromStr} label="End date" />
             <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
           </div>
         </div>
