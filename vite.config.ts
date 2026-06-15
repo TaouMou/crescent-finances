@@ -10,29 +10,14 @@ export default defineConfig({
   base,
   plugins: [
     svelte(),
+    // Build/iteration phase: ship a self-destroying service worker. It replaces
+    // any previously-installed cache-first SW, unregisters itself, and clears the
+    // old caches, so the deployed site always serves the latest build from the
+    // network (no more stale shell while we iterate). A full offline PWA
+    // (manifest + precache) will be restored once the app stabilises near release.
     VitePWA({
-      registerType: 'autoUpdate',
-      // App shell only — no financial data is ever cached or served.
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}'],
-        navigateFallback: `${base}index.html`
-      },
-      manifest: {
-        name: 'Crescent Finances',
-        short_name: 'Crescent',
-        description: 'Local-first, private personal-finance tracker.',
-        theme_color: '#14776b',
-        background_color: '#f6f7f5',
-        display: 'standalone',
-        // Relative paths so the manifest works under any base path.
-        start_url: '.',
-        scope: './',
-        icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
-        ]
-      }
+      selfDestroying: true,
+      registerType: 'autoUpdate'
     })
   ],
   resolve: {
