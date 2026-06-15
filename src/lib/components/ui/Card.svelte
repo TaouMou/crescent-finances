@@ -20,10 +20,10 @@
   });
   const blob = (aVar: string) => {
     const { x, y } = corner();
-    // Soft white sheen — large radius + far-out transparent stop for a gradual,
-    // edge-less highlight. Placement varies per card.
+    // Soft perspective-light touch (neutral, theme-aware via --bokeh-color):
+    // large radius + far-out transparent stop for a gradual, edge-less wash.
     const s = rnd(170, 240);
-    return `radial-gradient(${s}% ${s}% at ${x}% ${y}%, rgb(255 255 255 / var(${aVar})), transparent ${rnd(80, 98)}%)`;
+    return `radial-gradient(${s}% ${s}% at ${x}% ${y}%, rgb(var(--bokeh-color) / var(${aVar})), transparent ${rnd(80, 98)}%)`;
   };
   const bokeh = [blob('--bokeh-a1'), blob('--bokeh-a2')].join(', ');
 </script>

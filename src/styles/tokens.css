@@ -6,7 +6,7 @@
  */
 :root {
   --c-paper: 246 247 245;     /* #F6F7F5 */
-  --c-surface: 250 251 248;   /* #FAFBF8 — soft off-white so cards read as real cards */
+  --c-surface: 255 255 255;   /* #FFFFFF */
   --c-ink: 26 29 33;          /* #1A1D21 */
   --c-muted: 110 122 130;     /* #6E7A82 */
   --c-hairline: 227 231 229;  /* #E3E7E5 */
