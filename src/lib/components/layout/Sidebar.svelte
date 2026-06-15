@@ -118,9 +118,17 @@
     {/each}
   </div>
 
-  <div class="flex items-center gap-1 border-t border-hairline px-2.5 py-2.5">
+  <div
+    class={cn(
+      'flex border-t border-hairline px-2.5 py-2.5',
+      collapsed ? 'flex-col items-center gap-1' : 'items-center gap-1'
+    )}
+  >
     <button
-      class="flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+      class={cn(
+        'flex h-9 items-center rounded-control text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink',
+        collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5'
+      )}
       onclick={() => theme.toggle()}
       title="Toggle theme"
       aria-label="Toggle theme"
@@ -134,7 +142,7 @@
     </button>
     {#if collapsed}
       <button
-        class="ml-auto rounded-control p-1.5 text-muted hover:bg-ink/5 hover:text-ink"
+        class="grid h-9 w-9 place-items-center rounded-control text-muted transition-colors hover:bg-ink/5 hover:text-ink"
         title="Expand sidebar"
         onclick={() => (collapsed = false)}
         aria-label="Expand sidebar"
