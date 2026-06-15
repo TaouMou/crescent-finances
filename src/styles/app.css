@@ -38,9 +38,9 @@
 @layer components {
   .card {
     @apply rounded-card;
-    /* Surface + depth; the bokeh layer is generated per-card (Card.svelte),
-       randomized on each load. Intensity is theme-aware via these vars. */
-    background-color: rgb(var(--c-surface));
+    /* Cards share the sidebar/paper tone as their dominant colour; depth comes
+       from the shadow + the per-card perspective touches (Card.svelte). */
+    background-color: rgb(var(--c-paper));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
     /* Perspective light touches: darker on light cards (soft shadow depth). */
     --bokeh-color: var(--c-ink);
