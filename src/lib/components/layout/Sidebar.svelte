@@ -51,7 +51,7 @@
     fullWidth ? 'w-screen' : collapsed ? 'w-[64px]' : 'w-[248px]'
   )}
 >
-  <div class="flex h-14 items-center gap-2.5 px-4">
+  <div class="flex h-14 touch-none items-center gap-2.5 px-4">
     <div class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
       <span class="text-sm font-medium">◐</span>
     </div>
@@ -116,7 +116,7 @@
     {/if}
   </nav>
 
-  <div class="space-y-0.5 px-2.5 py-2">
+  <div class="touch-none space-y-0.5 px-2.5 py-2">
     {#each footerNav as item (item.id)}
       <a
         href={`#${item.id}`}
@@ -132,7 +132,7 @@
 
   <div
     class={cn(
-      'flex border-t border-hairline px-2.5 py-2.5',
+      'flex touch-none border-t border-hairline px-2.5 py-2.5',
       collapsed ? 'flex-col items-center gap-1' : 'items-center gap-1'
     )}
   >
