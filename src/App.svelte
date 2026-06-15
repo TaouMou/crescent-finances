@@ -26,7 +26,7 @@
 
   <div class="flex min-w-0 flex-1 flex-col">
     <Topbar title="Dashboard" period="June 2026" onMenu={() => (mobileOpen = true)} />
-    <main class={`flex-1 ${mobileOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+    <main class={`dashboard-surface flex-1 ${mobileOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <Dashboard />
     </main>
   </div>

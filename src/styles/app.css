@@ -37,12 +37,38 @@
 
 @layer components {
   .card {
-    @apply rounded-card bg-surface;
-    box-shadow: var(--shadow-card);
+    @apply rounded-card;
+    /* Cards share the sidebar/paper tone as their dominant colour; depth comes
+       from the shadow + the per-card perspective touches (Card.svelte). */
+    background-color: rgb(var(--c-paper));
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
+    /* Perspective light touches: darker on light cards (soft shadow depth). */
+    --bokeh-color: var(--c-ink);
+    --bokeh-a1: 0.05;
+    --bokeh-a2: 0.03;
+  }
+  .dark .card {
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
+    /* Lighter on dark cards (soft highlight). */
+    --bokeh-color: 255 255 255;
+    --bokeh-a1: 0.07;
+    --bokeh-a2: 0.04;
   }
 
   .hairline {
     @apply border-hairline;
+  }
+
+  /* Card/section heading: clearly distinct from body text (larger, tighter,
+     full-ink) while staying sentence case and within two font weights. */
+  .card-title {
+    @apply text-base font-medium tracking-tight text-ink;
+  }
+
+  /* Dashboard backdrop: a gentle top-to-bottom gradient (paper → slightly
+     darker) so the surface feels lit from above rather than flat. */
+  .dashboard-surface {
+    background-image: linear-gradient(to bottom, rgb(var(--c-paper)), rgb(var(--c-paper-deep)));
   }
 
   /* Tactile press feedback for interactive controls: quick scale-down on

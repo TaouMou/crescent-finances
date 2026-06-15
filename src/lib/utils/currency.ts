@@ -8,18 +8,21 @@ export interface MoneyFormatOptions {
   locale?: string;
   /** Show a leading +/- sign even for positive numbers. */
   signed?: boolean;
+  /** Drop the decimals (round to whole units) for a cleaner, less busy display. */
+  whole?: boolean;
 }
 
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
-function getFormatter(locale: string, currency: string): Intl.NumberFormat {
-  const key = `${locale}|${currency}`;
+function getFormatter(locale: string, currency: string, whole: boolean): Intl.NumberFormat {
+  const key = `${locale}|${currency}|${whole}`;
   let f = formatterCache.get(key);
   if (!f) {
     f = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
-      currencyDisplay: 'narrowSymbol'
+      currencyDisplay: 'narrowSymbol',
+      ...(whole ? { maximumFractionDigits: 0 } : {})
     });
     formatterCache.set(key, f);
   }
@@ -28,9 +31,9 @@ function getFormatter(locale: string, currency: string): Intl.NumberFormat {
 
 /** Format integer minor units (cents) as a currency string. */
 export function formatMoney(minorUnits: number, opts: MoneyFormatOptions = {}): string {
-  const { currency = 'EUR', locale = 'en-US', signed = false } = opts;
+  const { currency = 'EUR', locale = 'en-US', signed = false, whole = false } = opts;
   const major = minorUnits / 100;
-  const base = getFormatter(locale, currency).format(Math.abs(major));
+  const base = getFormatter(locale, currency, whole).format(Math.abs(major));
   if (minorUnits < 0) return `-${base}`;
   if (signed && minorUnits > 0) return `+${base}`;
   return base;

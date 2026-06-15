@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Check, Info } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import SummaryCards from './SummaryCards.svelte';
@@ -39,6 +40,10 @@
     const span = formatSpan(months, days);
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
+
+  // Distribution status, shown as a colored pill in the card header.
+  const planPctSum = distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0);
+  const planBalanced = Math.round(planPctSum) === 100;
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
@@ -49,7 +54,7 @@
     <div class="space-y-5 lg:col-span-2">
       <Card>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 class="text-sm font-medium text-ink">Net over time</h2>
+          <h2 class="card-title">Net over time</h2>
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
@@ -62,7 +67,7 @@
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Spending by category</h2>
+          <h2 class="card-title">Spending by category</h2>
           <span class="text-xs text-muted">June 2026</span>
         </div>
         <SpendingByCategory data={spendingByCategory} currency={demoCurrency} locale={demoLocale} />
@@ -72,16 +77,28 @@
     <!-- Side column -->
     <div class="space-y-5">
       <Card class="ring-accent/20">
-        <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">{distribution.name}</h2>
-          <span class="text-xs text-muted">Distribution</span>
+        <div class="mb-4 flex items-center justify-between gap-2">
+          <h2 class="card-title">{distribution.name}</h2>
+          <span
+            class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
+              planBalanced
+                ? 'border-income/30 bg-income/10 text-income'
+                : 'border-warn/30 bg-warn/10 text-warn'
+            }`}
+          >
+            {#if planBalanced}
+              <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
+            {:else}
+              <Info class="h-3.5 w-3.5 shrink-0" /> {Math.round(planPctSum)}% allocated
+            {/if}
+          </span>
         </div>
         <DistributionView group={distribution} currency={demoCurrency} locale={demoLocale} />
       </Card>
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Goals</h2>
+          <h2 class="card-title">Goals</h2>
           <span class="text-xs text-muted">Targets</span>
         </div>
         <TargetProgress items={targets} currency={demoCurrency} locale={demoLocale} />
@@ -89,7 +106,7 @@
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="text-sm font-medium text-ink">Anomalies</h2>
+          <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
         </div>
         <AnomaliesList data={anomalies} />
