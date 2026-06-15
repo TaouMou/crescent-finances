@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/bold-ride-s6tf1n, main]
+    branches: [claude/bold-ride-s6tf1n, claude/dreamy-clarke-v90xaf, main]
   workflow_dispatch:
 
 permissions:
