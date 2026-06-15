@@ -47,8 +47,8 @@
   }
   .dark .card {
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
-    --bokeh-a1: 0.055;
-    --bokeh-a2: 0.03;
+    --bokeh-a1: 0.07;
+    --bokeh-a2: 0.04;
   }
 
   .hairline {
