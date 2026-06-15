@@ -46,7 +46,10 @@
   const planBalanced = Math.round(planPctSum) === 100;
 </script>
 
-<div class="mx-auto max-w-[1180px] space-y-5 p-6">
+<div class="relative">
+  <!-- Ambient accent glow in the top chrome; cards sit on flat surfaces above it. -->
+  <div class="bokeh-ambient pointer-events-none absolute inset-x-0 top-0 z-0 h-80"></div>
+  <div class="relative z-10 mx-auto max-w-[1180px] space-y-5 p-6">
   <SummaryCards />
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -112,5 +115,6 @@
         <AnomaliesList data={anomalies} />
       </Card>
     </div>
+  </div>
   </div>
 </div>
