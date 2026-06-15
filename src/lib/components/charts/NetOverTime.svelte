@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type UplotType from 'uplot';
   import { formatMoneyCompact } from '$lib/utils/currency';
   import type { NetPoint } from '$lib/seed/dashboard';
@@ -12,6 +12,7 @@
   }: { data: NetPoint[]; currency?: string; locale?: string; height?: number } = $props();
 
   let el: HTMLDivElement;
+  let chart: UplotType | null = null;
 
   // Tokens are space-separated RGB channels, e.g. "20 119 107".
   function channels(name: string, fallback: string): string {
@@ -19,8 +20,14 @@
     return v || fallback;
   }
 
+  // Push new data into the chart when the selected timeframe changes.
+  $effect(() => {
+    const xs = data.map((d) => d.t);
+    const ys = data.map((d) => d.value / 100);
+    untrack(() => chart?.setData([xs, ys]));
+  });
+
   onMount(() => {
-    let chart: UplotType | null = null;
     let ro: ResizeObserver | null = null;
     let disposed = false;
 
@@ -104,6 +111,7 @@
       disposed = true;
       ro?.disconnect();
       chart?.destroy();
+      chart = null;
     };
   });
 </script>

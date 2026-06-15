@@ -15,6 +15,29 @@
     demoCurrency,
     demoLocale
   } from '$lib/seed/dashboard';
+  import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
+
+  // Timeframe for the net-over-time chart: two date selectors + a span label.
+  const today = new Date();
+  const aYearAgo = new Date(today);
+  aYearAgo.setFullYear(today.getFullYear() - 1);
+
+  let fromStr = $state(toISODate(aYearAgo));
+  let toStr = $state(toISODate(today));
+
+  const fromDate = $derived(new Date(`${fromStr}T00:00:00`));
+  const toDate = $derived(new Date(`${toStr}T23:59:59`));
+  const filteredNet = $derived(
+    netSeries.filter((p) => {
+      const t = p.t * 1000;
+      return t >= fromDate.getTime() && t <= toDate.getTime();
+    })
+  );
+  const spanLabel = $derived.by(() => {
+    const { months, days } = monthsDaysBetween(fromDate, toDate);
+    const span = formatSpan(months, days);
+    return isSameDay(toDate, today) ? `Last ${span}` : span;
+  });
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
@@ -24,11 +47,28 @@
     <!-- Main column -->
     <div class="space-y-5 lg:col-span-2">
       <Card>
-        <div class="mb-4 flex items-baseline justify-between">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 class="text-sm font-medium text-ink">Net over time</h2>
-          <span class="text-xs text-muted">Last 12 months</span>
+          <div class="flex items-center gap-2">
+            <input
+              type="date"
+              bind:value={fromStr}
+              max={toStr}
+              aria-label="Start date"
+              class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink [color-scheme:light] focus-visible:outline-none dark:[color-scheme:dark]"
+            />
+            <span class="text-muted">–</span>
+            <input
+              type="date"
+              bind:value={toStr}
+              min={fromStr}
+              aria-label="End date"
+              class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink [color-scheme:light] focus-visible:outline-none dark:[color-scheme:dark]"
+            />
+            <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
+          </div>
         </div>
-        <NetOverTime data={netSeries} currency={demoCurrency} locale={demoLocale} />
+        <NetOverTime data={filteredNet} currency={demoCurrency} locale={demoLocale} />
       </Card>
 
       <Card>
