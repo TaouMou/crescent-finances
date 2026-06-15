@@ -42,8 +42,8 @@
        randomized on each load. Intensity is theme-aware via these vars. */
     background-color: rgb(var(--c-surface));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
-    --bokeh-a1: 0.03;
-    --bokeh-a2: 0.018;
+    --bokeh-a1: 0.55;
+    --bokeh-a2: 0.3;
   }
   .dark .card {
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
