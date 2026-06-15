@@ -5,17 +5,26 @@
   let {
     class: className = '',
     padded = true,
-    /** CSS color token (e.g. '--c-accent', '--c-income') the card "shines" with. */
-    tint = '--c-accent',
     children
-  }: { class?: string; padded?: boolean; tint?: string; children: Snippet } = $props();
+  }: { class?: string; padded?: boolean; children: Snippet } = $props();
 
-  // Soft glow in the card's own colour — two corner blobs, kept transparent so
-  // it reads as a gentle sheen rather than colour.
-  const bokeh = $derived(
-    `radial-gradient(120% 120% at 0% 0%, rgb(var(${tint}) / var(--bokeh-a1)), transparent 55%), ` +
-      `radial-gradient(110% 110% at 100% 100%, rgb(var(${tint}) / var(--bokeh-a2)), transparent 60%)`
-  );
+  const rnd = (min: number, max: number) => Math.random() * (max - min) + min;
+  const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+  // Random bokeh per card (new on each load): each blob is a random palette
+  // colour placed near a random corner, kept transparent via --bokeh-a* so it
+  // reads as a faint sheen. Corners keep the centre clear for text/data.
+  const palette = ['--c-accent', '--c-income', '--c-expense', '--c-warn'];
+  const corner = () => ({
+    x: pick([rnd(-12, 28), rnd(72, 112)]),
+    y: pick([rnd(-12, 28), rnd(72, 112)])
+  });
+  const blob = (aVar: string) => {
+    const { x, y } = corner();
+    const s = rnd(95, 140);
+    return `radial-gradient(${s}% ${s}% at ${x}% ${y}%, rgb(var(${pick(palette)}) / var(${aVar})), transparent ${rnd(52, 62)}%)`;
+  };
+  const bokeh = [blob('--bokeh-a1'), blob('--bokeh-a2')].join(', ');
 </script>
 
 <div class={cn('card', padded && 'p-5', className)} style={`background-image:${bokeh}`}>

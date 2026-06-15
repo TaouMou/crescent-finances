@@ -11,16 +11,16 @@
   const trend = netSeries.map((p) => p.value);
 
   const cards = [
-    { label: 'Income', value: fmt(summary.income), icon: ArrowUpRight, tone: 'text-income', tint: '--c-income' },
-    { label: 'Spending', value: fmt(summary.spending), icon: ArrowDownRight, tone: 'text-expense', tint: '--c-expense' },
-    { label: 'Net', value: fmt(summary.net, true), icon: Scales, tone: 'text-ink', tint: '--c-accent', spark: true },
-    { label: 'Liquid balance', value: fmt(summary.liquidBalance), icon: Wallet, tone: 'text-ink', tint: '--c-accent', spark: true }
+    { label: 'Income', value: fmt(summary.income), icon: ArrowUpRight, tone: 'text-income' },
+    { label: 'Spending', value: fmt(summary.spending), icon: ArrowDownRight, tone: 'text-expense' },
+    { label: 'Net', value: fmt(summary.net, true), icon: Scales, tone: 'text-ink', spark: true },
+    { label: 'Liquid balance', value: fmt(summary.liquidBalance), icon: Wallet, tone: 'text-ink', spark: true }
   ];
 </script>
 
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
   {#each cards as c (c.label)}
-    <Card tint={c.tint} class="flex h-full flex-col gap-2.5">
+    <Card class="flex h-full flex-col gap-2.5">
       <div class="flex items-center justify-between gap-1.5">
         <span class="truncate whitespace-nowrap text-xs text-muted">{c.label}</span>
         <c.icon class={`h-4 w-4 shrink-0 ${c.tone}`} />
