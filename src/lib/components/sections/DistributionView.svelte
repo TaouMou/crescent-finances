@@ -13,7 +13,6 @@
   const plannedTotal = $derived(group.sections.reduce((s, x) => s + x.planned, 0));
   const actualTotal = $derived(group.sections.reduce((s, x) => s + x.actual, 0));
 
-  const seg = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
 </script>
 
 <div class="space-y-5">
@@ -30,11 +29,11 @@
           <span>{bar.label}</span>
           <span class="tnum">{fmt(bar.total)}</span>
         </div>
-        <div class="flex h-7 w-full overflow-hidden rounded-control bg-ink/[0.04]">
+        <div class="flex h-8 w-full gap-1.5">
           {#each group.sections as s (s.id)}
             <div
-              class="h-full origin-left first:rounded-l-control last:rounded-r-control"
-              style={`width:${seg(bar.pick(s), bar.total)}%;background:${s.color};transition:width var(--dur-slow) var(--ease-out)`}
+              class="h-full rounded-[5px] shadow-sm ring-1 ring-inset ring-black/5"
+              style={`flex:${bar.pick(s)} 0 0;background:${s.color};transition:flex-grow var(--dur-slow) var(--ease-out)`}
               title={`${s.name} · ${fmt(bar.pick(s))}`}
             ></div>
           {/each}
