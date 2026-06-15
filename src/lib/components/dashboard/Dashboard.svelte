@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Check, Info } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import SummaryCards from './SummaryCards.svelte';
@@ -39,6 +40,10 @@
     const span = formatSpan(months, days);
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
+
+  // Distribution status, shown as a colored pill in the card header.
+  const planPctSum = distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0);
+  const planBalanced = Math.round(planPctSum) === 100;
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
@@ -72,9 +77,21 @@
     <!-- Side column -->
     <div class="space-y-5">
       <Card class="ring-accent/20">
-        <div class="mb-4 flex items-baseline justify-between">
+        <div class="mb-4 flex items-center justify-between gap-2">
           <h2 class="card-title">{distribution.name}</h2>
-          <span class="text-xs text-muted">Distribution</span>
+          <span
+            class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
+              planBalanced
+                ? 'border-income/30 bg-income/10 text-income'
+                : 'border-warn/30 bg-warn/10 text-warn'
+            }`}
+          >
+            {#if planBalanced}
+              <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
+            {:else}
+              <Info class="h-3.5 w-3.5 shrink-0" /> {Math.round(planPctSum)}% allocated
+            {/if}
+          </span>
         </div>
         <DistributionView group={distribution} currency={demoCurrency} locale={demoLocale} />
       </Card>

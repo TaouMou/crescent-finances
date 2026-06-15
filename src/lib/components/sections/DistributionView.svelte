@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Check, Info } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup } from '$lib/seed/dashboard';
 
@@ -13,10 +12,6 @@
 
   const plannedTotal = $derived(group.sections.reduce((s, x) => s + x.planned, 0));
   const actualTotal = $derived(group.sections.reduce((s, x) => s + x.actual, 0));
-  const plannedPctSum = $derived(
-    group.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0)
-  );
-  const balanced = $derived(Math.round(plannedPctSum) === 100);
 
   const seg = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
 </script>
@@ -24,20 +19,7 @@
 <div class="space-y-5">
   <div class="space-y-1">
     <p class="text-sm text-muted">Source · {group.source}</p>
-    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-      <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
-      <span
-        class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-          balanced ? 'bg-income/12 text-income' : 'bg-warn/12 text-warn'
-        }`}
-      >
-        {#if balanced}
-          <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
-        {:else}
-          <Info class="h-3.5 w-3.5 shrink-0" /> {formatPercent(plannedPctSum, locale)} allocated
-        {/if}
-      </span>
-    </div>
+    <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
   </div>
 
   <!-- Planned vs actual stacked bars (the signature comparison) -->
