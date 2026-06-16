@@ -58,7 +58,7 @@ describe('evaluateDistribution', () => {
     expect(dist.source).toBe('Income');
     expect(dist.sections[0].planned).toBe(120_000);
     expect(dist.sections[0].plannedPct).toBe(30);
-    // actual mirrors planned until filterSum lands
+    // percentage sections have no tx linkage, so actual mirrors planned
     expect(dist.sections[0].actual).toBe(120_000);
   });
 
@@ -96,6 +96,48 @@ describe('evaluateDistribution', () => {
     const dist = evaluateDistribution(group, [], []);
     expect(dist.total).toBe(0);
     expect(dist.sections).toEqual([]);
+  });
+
+  it('filterSum draws a real actual (abs of matching txs) distinct from planned', () => {
+    // Income 400_000; groceries spending of -8000 across two matching txs.
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000 }),
+      makeTx({ id: 'g1', amount: -5000, categoryId: 'groceries' }),
+      makeTx({ id: 'g2', amount: -3000, categoryId: 'groceries' }),
+      makeTx({ id: 'r1', amount: -100_000, categoryId: 'rent' })
+    ];
+    const tracked = makeSection({
+      id: 's1',
+      name: 'Groceries',
+      order: 0,
+      calc: { type: 'filterSum', filter: { categoryIds: ['groceries'] }, planned: 10_000 }
+    });
+    const dist = evaluateDistribution(group, [tracked], data);
+    expect(dist.sections[0].planned).toBe(10_000);
+    expect(dist.sections[0].actual).toBe(8000);
+  });
+
+  it('filterSum actual is 0 when no transactions match', () => {
+    const tracked = makeSection({
+      id: 's1',
+      order: 0,
+      calc: { type: 'filterSum', filter: { categoryIds: ['nope'] }, planned: 10_000 }
+    });
+    const dist = evaluateDistribution(group, [tracked], txs);
+    expect(dist.sections[0].actual).toBe(0);
+  });
+
+  it('mixed group: percentage mirrors planned, filterSum diverges', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000 }),
+      makeTx({ id: 'g1', amount: -8000, categoryId: 'groceries' })
+    ];
+    const savings = makeSection({ id: 's1', order: 0, calc: { type: 'percentage', of: { kind: 'income' }, percent: 30 } });
+    const tracked = makeSection({ id: 's2', order: 1, calc: { type: 'filterSum', filter: { categoryIds: ['groceries'] }, planned: 10_000 } });
+    const dist = evaluateDistribution(group, [savings, tracked], data);
+    expect(dist.sections[0].actual).toBe(dist.sections[0].planned); // percentage mirrors
+    expect(dist.sections[1].actual).toBe(8000);
+    expect(dist.sections[1].planned).toBe(10_000);
   });
 });
 

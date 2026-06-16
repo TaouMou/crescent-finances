@@ -11,7 +11,7 @@
   import { evaluatePlan } from '$lib/sections/engine';
   import { safeParseConfig } from '$lib/config/schema';
   import { demoCurrency, demoLocale } from '$lib/seed/dashboard';
-  import type { Section, SectionCalc, SectionGroup, SectionGroupKind } from '$lib/types';
+  import type { Section, SectionCalc, SectionGroup, SectionGroupKind, TransactionFilter } from '$lib/types';
 
   const txAll = transactions.all;
 
@@ -69,7 +69,7 @@
   }
 
   // ----- section editor -----
-  type CalcType = 'percentage' | 'fixed' | 'remainder' | 'target';
+  type CalcType = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum';
   interface SectionDraft {
     id?: string;
     groupId: string;
@@ -80,6 +80,12 @@
     amountMajor: number;
     targetMajor: number;
     targetDate: string;
+    // filterSum fields
+    filterCategoryIds: string[];
+    filterAccountIds: string[];
+    filterTagIds: string[];
+    filterQuery: string;
+    plannedMajor: number;
   }
   let editingSection = $state<SectionDraft | null>(null);
 
@@ -91,7 +97,12 @@
     percent: 10,
     amountMajor: 0,
     targetMajor: 0,
-    targetDate: ''
+    targetDate: '',
+    filterCategoryIds: [],
+    filterAccountIds: [],
+    filterTagIds: [],
+    filterQuery: '',
+    plannedMajor: 0
   });
 
   function newSection(groupId: string) {
@@ -105,12 +116,26 @@
     d.id = s.id;
     d.name = s.name;
     d.color = s.color;
-    d.calcType = s.calc.type === 'percentage' || s.calc.type === 'fixed' || s.calc.type === 'remainder' || s.calc.type === 'target' ? s.calc.type : 'percentage';
+    d.calcType =
+      s.calc.type === 'percentage' ||
+      s.calc.type === 'fixed' ||
+      s.calc.type === 'remainder' ||
+      s.calc.type === 'target' ||
+      s.calc.type === 'filterSum'
+        ? s.calc.type
+        : 'percentage';
     if (s.calc.type === 'percentage') d.percent = s.calc.percent;
     if (s.calc.type === 'fixed') d.amountMajor = s.calc.amount / 100;
     if (s.calc.type === 'target') {
       d.targetMajor = s.calc.targetAmount / 100;
       d.targetDate = s.calc.targetDate ?? '';
+    }
+    if (s.calc.type === 'filterSum') {
+      d.filterCategoryIds = s.calc.filter.categoryIds ?? [];
+      d.filterAccountIds = s.calc.filter.accountIds ?? [];
+      d.filterTagIds = s.calc.filter.tagIds ?? [];
+      d.filterQuery = s.calc.filter.query ?? '';
+      d.plannedMajor = (s.calc.planned ?? 0) / 100;
     }
     editingSection = d;
   }
@@ -129,6 +154,15 @@
           targetAmount: Math.round((Number(d.targetMajor) || 0) * 100),
           targetDate: d.targetDate || undefined
         };
+      case 'filterSum': {
+        const filter: TransactionFilter = {};
+        if (d.filterCategoryIds.length) filter.categoryIds = [...d.filterCategoryIds];
+        if (d.filterAccountIds.length) filter.accountIds = [...d.filterAccountIds];
+        if (d.filterTagIds.length) filter.tagIds = [...d.filterTagIds];
+        if (d.filterQuery.trim()) filter.query = d.filterQuery.trim();
+        const planned = Math.round((Number(d.plannedMajor) || 0) * 100);
+        return { type: 'filterSum', filter, planned: planned || undefined };
+      }
     }
   }
 
@@ -191,6 +225,8 @@
         return 'Remainder of income';
       case 'target':
         return 'Goal / target';
+      case 'filterSum':
+        return 'Tracked spending';
       default:
         return s.calc.type;
     }
@@ -211,7 +247,7 @@
       <h1 class="text-lg font-semibold text-ink">Plan</h1>
       <p class="mt-0.5 text-sm text-muted">
         Split your income into sections (savings, fixed costs, spending) and track goals.
-        Live <em>actual</em> amounts arrive with transaction-linked sections in a later update.
+        Add a <em>tracked spending</em> section to see real actuals from your transactions.
       </p>
     </div>
     <button
@@ -294,6 +330,7 @@
             <option value="fixed">Fixed amount</option>
             <option value="remainder">Remainder of income</option>
             <option value="target">Goal / target</option>
+            <option value="filterSum">Tracked spending (filter)</option>
           </select>
         </label>
 
@@ -316,6 +353,56 @@
             <span class="text-xs text-muted">Target date (optional)</span>
             <DateField bind:value={editingSection.targetDate} clearable label="Target date" />
           </label>
+        {:else if editingSection.calcType === 'filterSum'}
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Categories</span>
+            {#if ($config?.categories ?? []).length > 0}
+              <select
+                multiple
+                bind:value={editingSection.filterCategoryIds}
+                class="min-h-[5.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              >
+                {#each $config?.categories ?? [] as c (c.id)}
+                  <option value={c.id}>{c.name}</option>
+                {/each}
+              </select>
+            {:else}
+              <span class="text-xs text-muted">No categories defined — add some in Settings, or use a label filter below.</span>
+            {/if}
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Planned (optional, {currency})</span>
+            <input type="number" min="0" step="0.01" bind:value={editingSection.plannedMajor} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+          </label>
+          <details class="sm:col-span-2">
+            <summary class="cursor-pointer text-xs text-muted hover:text-ink">More filters</summary>
+            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+              {#if ($config?.accounts ?? []).length > 0}
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs text-muted">Accounts</span>
+                  <select multiple bind:value={editingSection.filterAccountIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                    {#each $config?.accounts ?? [] as a (a.id)}
+                      <option value={a.id}>{a.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+              {#if ($config?.tags ?? []).length > 0}
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs text-muted">Tags</span>
+                  <select multiple bind:value={editingSection.filterTagIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                    {#each $config?.tags ?? [] as t (t.id)}
+                      <option value={t.id}>{t.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-muted">Label contains</span>
+                <input type="text" bind:value={editingSection.filterQuery} placeholder="e.g. groceries" class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+              </label>
+            </div>
+          </details>
         {/if}
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">

@@ -7,15 +7,17 @@
  *
  * Money is integer minor units (cents), signed: negative = expense.
  *
- * SLICE NOTE: `filterSum` and `accountBalance` calcs (which is where live
- * *actual* amounts and goal *current* values come from) are deferred. Until they
- * land, distribution `actual` mirrors `planned` (sections render "on plan") and
- * target `current` is 0. Everything else — the planned allocation math — is real.
+ * SLICE NOTE: `filterSum` sections now derive a real *actual* from matching
+ * transactions (see src/lib/sections/filter.ts). `percentage`/`fixed`/`remainder`
+ * are income-allocation intents with no transaction linkage, so their `actual`
+ * mirrors `planned` ("on plan"). `accountBalance` and target `current` (asset
+ * pools) remain deferred — target `current` is still 0.
  */
 
 import type { Section, SectionCalc, SectionGroup, Transaction } from '$lib/types';
 import type { DistributionGroup, DistributionSection, SectionKind, TargetSection } from '$lib/seed/dashboard';
 import { summarize } from '$lib/aggregations';
+import { filterSum } from './filter';
 
 type TargetCalc = Extract<SectionCalc, { type: 'target' }>;
 
@@ -69,8 +71,11 @@ export function evaluateDistribution(
           : total > 0
             ? Math.round((p / total) * 100)
             : undefined;
-    // actual mirrors planned until filterSum/category mapping lands (see slice note).
-    return { id: s.id, name: s.name, color: s.color, kind, plannedPct, planned: p, actual: p };
+    // filterSum sections draw a real actual from matching transactions; the
+    // others (percentage/fixed/remainder) have no tx linkage, so actual mirrors
+    // planned. Actual is a positive magnitude to match how planned is expressed.
+    const actual = s.calc.type === 'filterSum' ? Math.abs(filterSum(txs, s.calc.filter)) : p;
+    return { id: s.id, name: s.name, color: s.color, kind, plannedPct, planned: p, actual };
   });
 
   return { id: group.id, name: group.name, source: 'Income', total, sections: distSections };
