@@ -113,3 +113,20 @@ export interface TargetSection {
 export const targets: TargetSection[] = [
   { id: 't1', name: 'Emergency fund', color: '#14776B', current: 540_000, target: 800_000, targetDate: '2026-12-01' }
 ];
+
+import type { MonthlyNet } from '$lib/aggregations';
+
+const _incomes =   [320_000, 330_000, 315_000, 400_000, 325_000, 340_000, 450_000, 335_000, 380_000, 320_000, 410_000, 412_000];
+const _spendings = [237_700, 238_600, 250_200, 281_800, 251_500, 243_900, 307_100, 246_400, 270_600, 248_800, 279_000, 268_450];
+
+export const demoMonthly: MonthlyNet[] = (() => {
+  let cumulative = 980_000;
+  return _incomes.map((income, i) => {
+    const spending = _spendings[i];
+    const net = income - spending;
+    cumulative += net;
+    const year = 2025 + Math.floor((6 + i) / 12);
+    const month = String(((6 + i) % 12) + 1).padStart(2, '0');
+    return { bucket: `${year}-${month}`, income, spending, net, cumulative };
+  });
+})().reverse();
