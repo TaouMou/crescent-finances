@@ -38,11 +38,8 @@
 @layer components {
   .card {
     @apply rounded-card;
-    /* Cards use surface (pure white) so they lift clearly above the off-white
-       page background — same tone as input fields / date pickers. */
     background-color: rgb(var(--c-surface));
-    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
-    /* Bokeh off in light mode — shadow alone provides depth on white cards. */
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.5);
     --bokeh-a1: 0;
     --bokeh-a2: 0;
   }
