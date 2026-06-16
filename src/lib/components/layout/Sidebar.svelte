@@ -39,7 +39,7 @@
   let planOpen = $state(true);
   // Section groups are user-created; shown here from a demo config.
   const planGroups = [
-    { id: 'g1', label: 'Monthly plan' },
+    { id: 'monthly', label: 'Breakdown' },
     { id: 'g2', label: 'Goals' }
   ];
 
@@ -105,8 +105,9 @@
       <div class="space-y-0.5 pb-1" transition:slide={{ duration: 180 }}>
         {#each planGroups as g (g.id)}
           <a
-            href={`#plan/${g.id}`}
+            href={`#${g.id}`}
             class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            onclick={() => onClose?.()}
           >
             <span class="truncate">{g.label}</span>
           </a>

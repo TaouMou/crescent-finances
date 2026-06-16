@@ -5,17 +5,17 @@
  * One accent (teal); neutrals stay quiet; income/expense/warn are muted semantics.
  */
 :root {
-  --c-paper: 246 247 245;     /* #F6F7F5 */
-  --c-surface: 255 255 255;   /* #FFFFFF */
+  --c-paper: 235 230 220;     /* #EBE6DC warm parchment page */
+  --c-surface: 250 246 238;   /* #FAF6EE warm cream cards */
   --c-ink: 26 29 33;          /* #1A1D21 */
   --c-muted: 110 122 130;     /* #6E7A82 */
-  --c-hairline: 227 231 229;  /* #E3E7E5 */
-  --c-accent: 20 119 107;     /* #14776B */
-  --c-paper-deep: 233 235 230; /* a touch darker than paper, for the bg gradient */
+  --c-hairline: 214 208 196;  /* #D6D0C4 warm hairline */
+  --c-accent: 13 168 130;     /* #0DA882 vivid teal */
+  --c-paper-deep: 222 216 204; /* #DED8CC a touch darker than paper */
 
-  --c-income: 46 125 91;      /* #2E7D5B */
-  --c-expense: 180 68 60;     /* #B4443C */
-  --c-warn: 181 134 43;       /* #B5862B */
+  --c-income: 26 158 111;     /* #1A9E6F vivid green */
+  --c-expense: 208 56 45;     /* #D0382D vivid red */
+  --c-warn: 212 152 32;       /* #D49820 vivid amber */
 
   --shadow-card: 0 1px 2px rgb(26 29 33 / 0.04), 0 6px 16px -4px rgb(26 29 33 / 0.08),
     0 14px 32px -10px rgb(26 29 33 / 0.07);

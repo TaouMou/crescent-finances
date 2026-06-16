@@ -7,6 +7,7 @@
   import ImportView from '$lib/components/import/ImportView.svelte';
   import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
   import RulesView from '$lib/components/rules/RulesView.svelte';
+  import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -16,6 +17,7 @@
   let mobileOpen = $state(false);
 
   const status = $derived($vault.status);
+  const devBypass = import.meta.env.VITE_DEV_BYPASS === 'true';
 
   // ----- hash router -----
   let route = $state(currentRoute());
@@ -29,6 +31,7 @@
     import: 'Import',
     transactions: 'Transactions',
     rules: 'Rules',
+    monthly: 'Monthly',
     settings: 'Settings'
   };
   const title = $derived(titles[route] ?? 'Dashboard');
@@ -70,9 +73,9 @@
   <div class="flex h-screen w-screen items-center justify-center bg-paper text-muted" out:fade={{ duration: 150 }}>
     <span class="text-sm">Loading…</span>
   </div>
-{:else if status === 'uninitialized'}
+{:else if !devBypass && status === 'uninitialized'}
   <LockScreen firstRun />
-{:else if status === 'locked' || status === 'unlocking'}
+{:else if !devBypass && (status === 'locked' || status === 'unlocking')}
   <LockScreen />
 {:else}
   <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
@@ -94,7 +97,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar {title} period="June 2026" onMenu={() => (mobileOpen = true)} />
       <main
-        class={`dashboard-surface flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
+        class={`flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
         {#if route === 'import'}
@@ -103,6 +106,8 @@
           <TransactionsView />
         {:else if route === 'rules'}
           <RulesView />
+        {:else if route === 'monthly'}
+          <MonthlyView />
         {:else}
           <Dashboard />
         {/if}

@@ -96,7 +96,7 @@
 
 <div class="mx-auto max-w-[860px] space-y-6 p-6">
   <!-- Header -->
-  <div class="flex items-center justify-between gap-4">
+  <div class="space-y-3">
     <div>
       <h1 class="text-lg font-semibold text-ink">Rules</h1>
       <p class="mt-0.5 text-sm text-muted">
@@ -104,10 +104,7 @@
         Rules run in priority order (lower number = first).
       </p>
     </div>
-    <div class="flex items-center gap-2">
-      {#if applyStatus}
-        <span class="text-xs text-muted">{applyStatus}</span>
-      {/if}
+    <div class="flex flex-wrap items-center gap-2">
       <button
         class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         onclick={applyRulesNow}
@@ -123,6 +120,9 @@
         <Plus class="h-4 w-4" />
         New rule
       </button>
+      {#if applyStatus}
+        <span class="text-xs text-muted">{applyStatus}</span>
+      {/if}
     </div>
   </div>
 
