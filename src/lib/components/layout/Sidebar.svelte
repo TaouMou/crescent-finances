@@ -2,7 +2,7 @@
   import {
     SquaresFour,
     ArrowsLeftRight,
-    ChartPieSlice,
+    CalendarBlank,
     UploadSimple,
     GearSix,
     CaretRight,
@@ -12,7 +12,7 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { slide, fade } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -31,10 +31,10 @@
     onClose?: () => void;
   } = $props();
 
-  // Notion-style nested navigation. "Plan" expands into user-defined section groups.
   const nav = [
     { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
     { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight },
+    { id: 'monthly', label: 'Breakdown', icon: CalendarBlank },
     { id: 'rules', label: 'Rules', icon: Funnel }
   ];
 
