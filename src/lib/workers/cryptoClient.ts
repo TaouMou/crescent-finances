@@ -82,6 +82,17 @@ export class CryptoClient {
     return this.send({ type: 'decryptMany', blobs }) as Promise<T[]>;
   }
 
+  parse(bytes: ArrayBuffer, opts: { delimiter?: ';' | ','; encoding?: 'utf-8' | 'latin1'; hasHeader?: boolean } = {}) {
+    return this.send({ type: 'parse', bytes, ...opts });
+  }
+
+  buildTransactions(
+    records: Array<Record<string, string>>,
+    settings: import('./protocol').BuildReq['settings']
+  ) {
+    return this.send({ type: 'buildTransactions', records, settings });
+  }
+
   /** Tear the worker down (e.g. on full reset). */
   terminate() {
     this.worker?.terminate();

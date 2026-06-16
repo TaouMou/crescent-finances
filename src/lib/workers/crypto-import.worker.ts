@@ -7,14 +7,30 @@
 /// <reference lib="webworker" />
 
 import { CryptoCore } from './crypto-core';
-import type { WorkerRequest, WorkerResponse } from './protocol';
+import { buildFromRecords, parseCsv } from './import-core';
+import type { WorkerRequest, WorkerRequestBody, WorkerResponse } from './protocol';
 
 const core = new CryptoCore();
+
+function dispatch(body: WorkerRequestBody): Promise<unknown> {
+  switch (body.type) {
+    case 'parse':
+      return parseCsv(body.bytes, {
+        delimiter: body.delimiter,
+        encoding: body.encoding,
+        hasHeader: body.hasHeader
+      });
+    case 'buildTransactions':
+      return buildFromRecords(body.records, body.settings);
+    default:
+      return core.handle(body);
+  }
+}
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const { reqId, ...body } = event.data;
   try {
-    const result = await core.handle(body);
+    const result = await dispatch(body);
     const res: WorkerResponse = { reqId, ok: true, result };
     self.postMessage(res);
   } catch (err) {

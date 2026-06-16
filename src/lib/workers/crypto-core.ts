@@ -18,7 +18,7 @@ import {
   toBase64,
   verifyKey
 } from '$lib/crypto/crypto';
-import type { WorkerRequestBody } from './protocol';
+import type { CryptoRequestBody } from './protocol';
 
 export class CryptoCore {
   private key: CryptoKey | null = null;
@@ -37,7 +37,7 @@ export class CryptoCore {
   }
 
   /** Dispatch a protocol request to its handler and return the result payload. */
-  async handle(req: WorkerRequestBody): Promise<unknown> {
+  async handle(req: CryptoRequestBody): Promise<unknown> {
     switch (req.type) {
       case 'setup': {
         const iterations = req.iterations ?? KDF_ITERATIONS;

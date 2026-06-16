@@ -137,3 +137,12 @@ export async function verifyKey(key: CryptoKey, verifier: EncryptedBlob): Promis
 export async function makeVerifier(key: CryptoKey): Promise<EncryptedBlob> {
   return encryptJson(key, VAULT_VERIFIER_TOKEN);
 }
+
+/** Hex-encoded SHA-256 of a UTF-8 string. Used for transaction fingerprints. */
+export async function sha256Hex(text: string): Promise<string> {
+  const digest = await subtle().digest('SHA-256', buf(encoder.encode(text)));
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
