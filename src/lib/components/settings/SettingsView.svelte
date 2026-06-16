@@ -4,9 +4,17 @@
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
   import { vault } from '$lib/stores/vault';
-  import { serializeConfigTemplate, parseConfigTemplate } from '$lib/config/backup';
+  import { cryptoWorker } from '$lib/workers/cryptoClient';
+  import { vaultRepo, transactionRepo, configRepo, dateBucketOf } from '$lib/db/repos';
+  import {
+    serializeConfigTemplate,
+    parseConfigTemplate,
+    buildBackup,
+    serializeBackup,
+    parseBackup
+  } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
-  import type { AppConfig } from '$lib/types';
+  import type { AppConfig, Transaction } from '$lib/types';
 
   let savedAt = $state<string | null>(null);
   let importError = $state<string | null>(null);
@@ -115,6 +123,92 @@
 
   function deletePool(id: string) {
     patch((c) => ({ ...c, assetPools: c.assetPools.filter((p) => p.id !== id) }));
+  }
+
+  // ----- encrypted backup -----
+  let backupError = $state<string | null>(null);
+  let backupFile: HTMLInputElement;
+  let restoreFile = $state<File | null>(null);
+  let restorePass = $state('');
+  let restoring = $state(false);
+
+  async function exportBackup() {
+    backupError = null;
+    if (!$config) return;
+    try {
+      const material = await vaultRepo.getMaterial();
+      if (!material) {
+        backupError = 'No vault on this device.';
+        return;
+      }
+      const stored = await transactionRepo.allEncrypted();
+      const backup = buildBackup({
+        config: $config,
+        kdf: { saltB64: material.saltB64, iterations: material.iterations },
+        verifier: material.verifier,
+        transactions: stored.map((s) => s.blob)
+      });
+      const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `crescent-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      backupError = err instanceof Error ? err.message : 'Export failed.';
+    }
+  }
+
+  /**
+   * Restore an encrypted backup. This REPLACES the vault, config and all
+   * transactions on this device, then reloads. Unlocking with the backup's
+   * passphrase derives the key the backup was encrypted with.
+   */
+  async function restoreBackup() {
+    backupError = null;
+    if (!restoreFile || !restorePass) return;
+    restoring = true;
+    try {
+      const backup = parseBackup(await restoreFile.text());
+      // Derive + verify the backup's key inside the worker.
+      const { ok } = await cryptoWorker.unlock({
+        passphrase: restorePass,
+        saltB64: backup.kdf.saltB64,
+        iterations: backup.kdf.iterations,
+        verifier: backup.verifier
+      });
+      if (!ok) {
+        backupError = 'That passphrase did not match the backup.';
+        return;
+      }
+      // Decrypt to recover each row's id/fingerprint/date, then re-persist the
+      // (already-encrypted) blobs under the restored vault material.
+      const txs = await cryptoWorker.decryptMany<Transaction>(backup.transactions);
+      await vaultRepo.saveMaterial({
+        saltB64: backup.kdf.saltB64,
+        iterations: backup.kdf.iterations,
+        verifier: backup.verifier
+      });
+      await configRepo.save(backup.config);
+      await transactionRepo.clear();
+      if (txs.length) {
+        await transactionRepo.bulkUpdateBlobs(
+          txs.map((tx, i) => ({
+            id: tx.id,
+            fingerprint: tx.fingerprint,
+            dateBucket: dateBucketOf(tx.date),
+            blob: backup.transactions[i]
+          }))
+        );
+      }
+      // Reload so the app re-initialises cleanly from the restored vault.
+      location.reload();
+    } catch (err) {
+      backupError = err instanceof Error ? err.message : 'Restore failed.';
+    } finally {
+      restoring = false;
+    }
   }
 
   // ----- danger zone -----
@@ -427,6 +521,51 @@
     </div>
     {#if importError}
       <p class="mt-3 text-xs text-expense">Import failed: {importError}</p>
+    {/if}
+  </Card>
+
+  <!-- Encrypted backup -->
+  <Card>
+    <h2 class="card-title mb-1">Encrypted backup</h2>
+    <p class="mb-4 text-xs text-muted">
+      A self-contained backup of your configuration and every transaction (transactions stay
+      encrypted). Restore it on any device with the passphrase it was made with.
+    </p>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={exportBackup} disabled={!$config}>
+        <DownloadSimple class="h-4 w-4" /> Export backup
+      </button>
+      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => backupFile.click()}>
+        <UploadSimple class="h-4 w-4" /> Choose backup file…
+      </button>
+      <input bind:this={backupFile} type="file" accept="application/json,.json" class="hidden" onchange={(e) => { restoreFile = e.currentTarget.files?.[0] ?? null; backupError = null; }} />
+    </div>
+
+    {#if restoreFile}
+      <div class="mt-3 space-y-2 rounded-control border border-warn/30 bg-warn/5 p-3">
+        <p class="text-xs text-ink">
+          Restoring <span class="font-medium">{restoreFile.name}</span> will <span class="font-medium text-warn">replace</span>
+          the configuration and all transactions on this device.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            type="password"
+            bind:value={restorePass}
+            placeholder="Backup passphrase"
+            class="h-9 flex-1 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+          />
+          <button class="press h-9 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50" onclick={restoreBackup} disabled={restoring || !restorePass}>
+            {restoring ? 'Restoring…' : 'Restore & replace'}
+          </button>
+          <button class="press h-9 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5" onclick={() => { restoreFile = null; restorePass = ''; }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    {#if backupError}
+      <p class="mt-3 text-xs text-expense">{backupError}</p>
     {/if}
   </Card>
 
