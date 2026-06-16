@@ -8,10 +8,12 @@
     CaretRight,
     Moon,
     Sun,
+    Lock,
     X
   } from 'phosphor-svelte';
   import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
+  import { vault } from '$lib/stores/vault';
   import { cn } from '$lib/utils/cn';
 
   let {
@@ -145,6 +147,15 @@
         <Moon class="h-[18px] w-[18px] shrink-0" />
       {/if}
       {#if !collapsed}<span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
+    </button>
+    <button
+      class="press flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      onclick={() => { onClose?.(); vault.lock(); }}
+      title="Lock"
+      aria-label="Lock"
+    >
+      <Lock class="h-[18px] w-[18px] shrink-0" />
+      {#if !collapsed}<span class="truncate">Lock</span>{/if}
     </button>
   </div>
 

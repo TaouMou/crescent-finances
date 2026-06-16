@@ -35,6 +35,24 @@ export interface LockReq {
   type: 'lock';
 }
 
+/** Persist the current key to the session store ("remember on this device"). */
+export interface RememberReq {
+  type: 'remember';
+}
+/** Restore a remembered key if present and not older than maxAgeMs. */
+export interface ResumeReq {
+  type: 'resume';
+  maxAgeMs: number;
+}
+/** Drop any remembered session key. */
+export interface ForgetReq {
+  type: 'forget';
+}
+/** Refresh the remembered session's activity timestamp. */
+export interface TouchReq {
+  type: 'touch';
+}
+
 export interface EncryptReq {
   type: 'encrypt';
   value: unknown;
@@ -72,6 +90,10 @@ export type WorkerRequestBody =
   | SetupReq
   | UnlockReq
   | LockReq
+  | RememberReq
+  | ResumeReq
+  | ForgetReq
+  | TouchReq
   | EncryptReq
   | DecryptReq
   | EncryptManyReq
@@ -93,6 +115,10 @@ export interface ResultMap {
   setup: SetupRes;
   unlock: UnlockRes;
   lock: void;
+  remember: { ok: boolean };
+  resume: { resumed: boolean };
+  forget: void;
+  touch: void;
   encrypt: EncryptedBlob;
   decrypt: unknown;
   encryptMany: EncryptedBlob[];

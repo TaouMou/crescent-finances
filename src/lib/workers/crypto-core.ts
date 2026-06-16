@@ -18,6 +18,7 @@ import {
   toBase64,
   verifyKey
 } from '$lib/crypto/crypto';
+import { clearSession, getSession, putSession } from './session-store';
 import type { CryptoRequestBody } from './protocol';
 
 export class CryptoCore {
@@ -54,6 +55,30 @@ export class CryptoCore {
       }
       case 'lock': {
         this.lock();
+        return undefined;
+      }
+      case 'remember': {
+        if (!this.key) return { ok: false };
+        await putSession(this.key);
+        return { ok: true };
+      }
+      case 'resume': {
+        const rec = await getSession();
+        if (rec && Date.now() - rec.ts <= req.maxAgeMs) {
+          this.key = rec.key;
+          await putSession(rec.key); // refresh timestamp on resume
+          return { resumed: true };
+        }
+        await clearSession();
+        return { resumed: false };
+      }
+      case 'forget': {
+        await clearSession();
+        return undefined;
+      }
+      case 'touch': {
+        const rec = await getSession();
+        if (rec) await putSession(rec.key);
         return undefined;
       }
       case 'encrypt':

@@ -66,6 +66,22 @@ export class CryptoClient {
     return this.send({ type: 'lock' });
   }
 
+  remember() {
+    return this.send({ type: 'remember' });
+  }
+
+  resume(maxAgeMs: number) {
+    return this.send({ type: 'resume', maxAgeMs });
+  }
+
+  forget() {
+    return this.send({ type: 'forget' });
+  }
+
+  touch() {
+    return this.send({ type: 'touch' });
+  }
+
   encrypt(value: unknown) {
     return this.send({ type: 'encrypt', value });
   }

@@ -14,6 +14,13 @@ describe('vault state machine', () => {
     expect(vaultTransition('uninitialized', { type: 'setupDone' })).toBe('unlocked');
   });
 
+  it('a remembered session resumes straight to unlocked', () => {
+    expect(vaultTransition('loading', { type: 'resumed' })).toBe('unlocked');
+    expect(vaultTransition('locked', { type: 'resumed' })).toBe('unlocked');
+    // Ignored once already unlocked.
+    expect(vaultTransition('unlocked', { type: 'resumed' })).toBe('unlocked');
+  });
+
   it('unlock flow: locked → unlocking → unlocked', () => {
     const unlocking = vaultTransition('locked', { type: 'unlockStart' });
     expect(unlocking).toBe('unlocking');

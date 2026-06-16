@@ -13,6 +13,7 @@ export type VaultStatus =
 
 export type VaultEvent =
   | { type: 'checked'; exists: boolean }
+  | { type: 'resumed' }
   | { type: 'setupDone' }
   | { type: 'unlockStart' }
   | { type: 'unlockOk' }
@@ -24,6 +25,9 @@ export function vaultTransition(state: VaultStatus, event: VaultEvent): VaultSta
   switch (event.type) {
     case 'checked':
       return state === 'loading' ? (event.exists ? 'locked' : 'uninitialized') : state;
+    case 'resumed':
+      // A remembered key restored the session straight to unlocked on boot.
+      return state === 'loading' || state === 'locked' ? 'unlocked' : state;
     case 'setupDone':
       return state === 'uninitialized' ? 'unlocked' : state;
     case 'unlockStart':

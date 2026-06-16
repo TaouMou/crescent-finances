@@ -120,6 +120,18 @@
         <p class="px-1 text-xs text-expense">{error}</p>
       {/if}
 
+      <label class="flex items-center gap-2 px-1 text-sm text-muted">
+        <input
+          type="checkbox"
+          checked={$vault.remember}
+          onchange={(e) => vault.setRemember(e.currentTarget.checked)}
+        />
+        Keep me unlocked on this device
+      </label>
+      {#if $vault.remember}
+        <p class="px-1 text-xs text-muted/80">Locks automatically after 15 minutes of inactivity.</p>
+      {/if}
+
       <button type="submit" class={cn('submit-btn press', !canSubmit && 'opacity-50')} disabled={!canSubmit}>
         {#if busy}
           {firstRun ? 'Setting up…' : 'Unlocking…'}
