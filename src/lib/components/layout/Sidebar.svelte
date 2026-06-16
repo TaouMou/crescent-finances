@@ -122,7 +122,10 @@
     {#each footerNav as item (item.id)}
       <a
         href={`#${item.id}`}
-        class="flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+        class={cn(
+          'flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+          active === item.id && 'bg-accent/10 text-accent hover:bg-accent/12 hover:text-accent'
+        )}
         title={item.label}
         onclick={() => onClose?.()}
       >
