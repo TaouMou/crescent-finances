@@ -15,6 +15,8 @@
   import { slide, fade } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
+  import { config } from '$lib/stores/config';
+  import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { cn } from '$lib/utils/cn';
 
   let {
@@ -37,11 +39,20 @@
   ];
 
   let planOpen = $state(true);
-  // Section groups are user-created; shown here from a demo config.
-  const planGroups = [
-    { id: 'monthly', label: 'Breakdown' },
-    { id: 'g2', label: 'Goals' }
-  ];
+  // "Breakdown" is the static monthly route; the rest are user-created section
+  // groups read live from config, each linking to the Plan view.
+  const planGroups = $derived([
+    { key: 'monthly', label: 'Breakdown', href: '#monthly' },
+    ...[...($config?.sectionGroups ?? [])]
+      .sort((a, b) => a.order - b.order)
+      .map((g) => ({ key: g.id, label: g.name, href: '#plan' }))
+  ]);
+
+  function requestNewGroup() {
+    openNewGroupRequested.set(true);
+    location.hash = '#plan';
+    onClose?.();
+  }
 
   const footerNav = [
     { id: 'import', label: 'Import CSV', icon: UploadSimple },
@@ -103,9 +114,9 @@
     </button>
     {#if planOpen && !collapsed}
       <div class="space-y-0.5 pb-1" transition:slide={{ duration: 180 }}>
-        {#each planGroups as g (g.id)}
+        {#each planGroups as g (g.key)}
           <a
-            href={`#${g.id}`}
+            href={g.href}
             class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
             onclick={() => onClose?.()}
           >
@@ -114,6 +125,7 @@
         {/each}
         <button
           class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+          onclick={requestNewGroup}
         >
           <span class="truncate">+ New group</span>
         </button>
