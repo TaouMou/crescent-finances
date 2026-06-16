@@ -46,7 +46,7 @@ Transactions are stored encrypted: only `id`, `fingerprint`, `dateBucket` are pl
 |------|---------|
 | `vault.ts` | Lock/unlock/setup/reset state + idle timer; never holds the key |
 | `vault-machine.ts` | Pure `(state, event) → state` — unit-tested |
-| `transactions.ts` | Import-commit pipeline + decrypted transaction cache (loadAll) |
+| `transactions.ts` | Import-commit pipeline + decrypted transaction cache (`loadAll`, `applyAndSave`) |
 | `config.ts` | Config load/save |
 | `theme.ts` | Light/dark toggle |
 
@@ -65,22 +65,39 @@ Rules match on `label` or `entity` fields by keyword or regex, sorted by priorit
 
 ### `src/lib/aggregations.ts`
 Pure functions over decrypted `Transaction[]`:
-- `summarize(txs, from?, to?)` → `{income, spending, net}`
+- `summarize(txs, from?, to?)` → `{ income, spending, net }`
 - `categoryBreakdown(txs, categories, from?, to?)` → spending by category
-- `monthlyNets(txs)` → monthly income/spending/net series
+- `monthlyNets(txs)` → `{ bucket, income, spending, net, cumulative }[]`
+
+### `src/lib/seed/dashboard.ts`
+Demo data used when no real transactions are loaded (bypass mode or empty vault):
+`summary`, `spendingByCategory`, `netSeries`, `distribution`, `targets`, `demoMonthly`.
 
 ### `src/lib/components/`
 | Path | Purpose |
 |------|---------|
 | `auth/LockScreen.svelte` | Setup passphrase + unlock UI |
-| `layout/Sidebar.svelte` | Navigation + collapse |
+| `layout/Sidebar.svelte` | Navigation + collapse; Plan section expands to sub-routes |
 | `layout/Topbar.svelte` | Header |
-| `dashboard/Dashboard.svelte` | Main view with real aggregations (falls back to empty state) |
+| `dashboard/Dashboard.svelte` | Main view with real aggregations (falls back to demo seed data) |
 | `dashboard/SummaryCards.svelte` | Income/spending/net/balance with count-up animation |
-| `transactions/TransactionsView.svelte` | Virtualized, sortable, filterable table |
-| `rules/RulesView.svelte` | Rule CRUD UI |
+| `transactions/TransactionsView.svelte` | Virtualized, sortable, filterable table (mobile: 2-col; desktop: 4-col) |
+| `rules/RulesView.svelte` | Rule CRUD UI with enable/disable toggle and "Apply now" |
+| `monthly/MonthlyView.svelte` | Monthly breakdown — income/spending/net per month with mini bar chart |
 | `import/ImportView.svelte` | Multi-step CSV import |
-| `ui/CountUp.svelte` | Animated number count-up component |
+| `ui/CountUp.svelte` | Animated number count-up (rAF + ease-out cubic) |
+
+## Design tokens (`src/styles/tokens.css`)
+
+Light mode uses a **warm cream palette** — no pure white:
+- `--c-paper`: `#EBE6DC` (page background)
+- `--c-surface`: `#FAF6EE` (cards, inputs)
+- `--c-accent`: `#0DA882` (vivid teal)
+- `--c-income`: `#1A9E6F` · `--c-expense`: `#D0382D` · `--c-warn`: `#D49820`
+
+Dark mode keeps the current cool-neutral palette (`#131618` paper, `#1B1F22` surface).
+
+Bokeh radial gradients are **disabled in light mode** (`--bokeh-a1: 0; --bokeh-a2: 0`) to prevent random grey blobs on cream cards.
 
 ## Conventions
 
@@ -89,7 +106,7 @@ Pure functions over decrypted `Transaction[]`:
 - Pure logic (state machines, rule engine, aggregations, parsers) lives in plain `.ts` files, no Svelte globals, so vitest can test them without DOM or worker setup.
 - Svelte 5 runes (`$state`, `$derived`, `$effect`, `$props`) throughout; no Svelte 4 options API.
 - Config is financial-data-free (no balances, no transactions) and is stored in plaintext — shareable as a template.
-- Hash-based routing: `#dashboard`, `#transactions`, `#import`, `#rules`, `#settings`. Falls back to `#dashboard`.
+- Hash-based routing: `#dashboard`, `#transactions`, `#monthly`, `#import`, `#rules`, `#settings`. Falls back to `#dashboard`.
 
 ## Dev / verify workflow
 
@@ -101,8 +118,25 @@ npm run build     # type-check + vite build
 
 Browser e2e screenshots via `scripts/shot.mjs` (Playwright, bundled Chromium at `/opt/pw-browsers/`).
 
+### Dev vault bypass
+
+Set `VITE_DEV_BYPASS=true` in `.env.local` to skip the passphrase screen and render the app with demo seed data. Never committed; has no effect in production builds.
+
+```sh
+echo "VITE_DEV_BYPASS=true" > .env.local
+npm run build && npx vite preview
+```
+
+## Git workflow
+
+- **`main`** — production. Only receives squash-merges from `dev` at milestone boundaries.
+- **`dev`** — integration branch. Always stable; feature branches cut from here.
+- **`feature/xxx`** — branch off `dev`, PR back to `dev` when done.
+- Deploy (GitHub Pages) triggered manually via `workflow_dispatch` on `deploy-pages.yml`.
+
 ## Status
 
 - **M1** — Encrypted vault foundation: crypto worker, PBKDF2/AES-GCM, Dexie schema, LockScreen, config schema, backup format. ✅
 - **M2** — CSV import: import worker, fingerprinting/dedup, ImportView (3-step UI), import profiles, idle auto-lock. ✅
-- **M3** — Virtualized transactions table, rule engine, real dashboard aggregations, count-up animations, View Transitions, hash router. ✅
+- **M3** — Virtualized transactions table, rule engine, real dashboard aggregations, count-up animations, View Transitions, hash router, monthly breakdown view, warm cream palette. ✅
+- **M4** — TBD
