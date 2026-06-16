@@ -3,6 +3,7 @@
     SquaresFour,
     ArrowsLeftRight,
     CalendarBlank,
+    ChartPieSlice,
     UploadSimple,
     GearSix,
     CaretRight,
@@ -12,7 +13,7 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { fade } from 'svelte/transition';
+  import { slide, fade } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -39,14 +40,11 @@
   ];
 
   let planOpen = $state(true);
-  // "Breakdown" is the static monthly route; the rest are user-created section
-  // groups read live from config, each linking to the Plan view.
-  const planGroups = $derived([
-    { key: 'monthly', label: 'Breakdown', href: '#monthly' },
-    ...[...($config?.sectionGroups ?? [])]
+  const planGroups = $derived(
+    [...($config?.sectionGroups ?? [])]
       .sort((a, b) => a.order - b.order)
       .map((g) => ({ key: g.id, label: g.name, href: '#plan' }))
-  ]);
+  );
 
   function requestNewGroup() {
     openNewGroupRequested.set(true);
