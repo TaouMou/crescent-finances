@@ -4,6 +4,7 @@
   import { config } from '$lib/stores/config';
   import { formatMoney } from '$lib/utils/currency';
   import { cn } from '$lib/utils/cn';
+  import DateField from '$lib/components/ui/DateField.svelte';
   import type { Transaction } from '$lib/types';
 
   // ----- data loading -----
@@ -132,18 +133,18 @@
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center gap-1.5 text-xs text-muted">
           <Funnel class="h-3.5 w-3.5 shrink-0" />
-          <input
-            type="date"
+          <DateField
             bind:value={filterFrom}
-            class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            title="From date"
+            max={filterTo || undefined}
+            label="From date"
+            clearable
           />
           <span>–</span>
-          <input
-            type="date"
+          <DateField
             bind:value={filterTo}
-            class="h-8 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            title="To date"
+            min={filterFrom || undefined}
+            label="To date"
+            clearable
           />
         </div>
         {#if ($config?.categories ?? []).length > 0}
