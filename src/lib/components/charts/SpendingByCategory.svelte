@@ -8,29 +8,21 @@
     locale = 'en-US'
   }: { data: CategorySpend[]; currency?: string; locale?: string } = $props();
 
-  const max = $derived(Math.max(...data.map((d) => d.amount), 1));
   const total = $derived(data.reduce((s, d) => s + d.amount, 0));
 </script>
 
-<div class="space-y-3">
-  {#each data as row, i (row.name)}
-    <div class="group grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
-      <div class="flex items-center gap-2 text-sm text-ink">
-        <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${row.color}`}></span>
-        <span class="truncate">{row.name}</span>
-      </div>
-      <span class="tnum text-sm text-ink">{formatMoney(row.amount, { currency, locale })}</span>
-      <div class="col-span-2 h-1.5 overflow-hidden rounded-full bg-ink/[0.06]">
-        <div
-          class="h-full rounded-full origin-left"
-          style={`background:${row.color};transform:scaleX(${row.amount / max});transition:transform var(--dur-slow) var(--ease-out) ${i * 40}ms`}
-        ></div>
-      </div>
+<div class="divide-y divide-hairline">
+  {#each data as row (row.name)}
+    <div class="flex items-center gap-3 py-2.5 text-sm">
+      <span class="h-2 w-2 shrink-0 rounded-full" style={`background:${row.color}`}></span>
+      <span class="flex-1 truncate text-ink">{row.name}</span>
+      <span class="tnum text-xs text-muted">{Math.round((row.amount / total) * 100)}%</span>
+      <span class="tnum text-ink">{formatMoney(row.amount, { currency, locale })}</span>
     </div>
   {/each}
 </div>
 
-<div class="mt-4 flex items-center justify-between border-t border-hairline pt-3 text-sm">
+<div class="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-sm">
   <span class="text-muted">Total spending</span>
   <span class="tnum font-medium text-ink">{formatMoney(total, { currency, locale })}</span>
 </div>
