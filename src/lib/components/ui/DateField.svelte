@@ -30,6 +30,12 @@
   // The month currently shown in the popover.
   let view = $state(parse(value));
 
+  // Popover width (matches the w-[244px] below); used for overflow flipping.
+  const POPOVER_W = 244;
+  let trigger = $state<HTMLButtonElement>();
+  // Horizontal alignment of the popover: flips to 'right' near the screen edge.
+  let align = $state<'left' | 'right'>('left');
+
   const today = new Date();
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -72,7 +78,13 @@
   }
 
   function toggle() {
-    if (!open) view = parse(value);
+    if (!open) {
+      view = parse(value);
+      // Flip to right-alignment if a left-aligned popover would overflow.
+      const rect = trigger?.getBoundingClientRect();
+      const vw = typeof window !== 'undefined' ? window.innerWidth : Infinity;
+      align = rect && rect.left + POPOVER_W > vw - 8 ? 'right' : 'left';
+    }
     open = !open;
   }
   function pick(d: Date) {
@@ -97,6 +109,7 @@
 
 <div class="relative inline-block">
   <button
+    bind:this={trigger}
     type="button"
     onclick={toggle}
     aria-label={label}
@@ -129,7 +142,10 @@
     ></button>
 
     <div
-      class="absolute left-0 top-full z-50 mt-2 w-[244px] origin-top rounded-card bg-surface p-3 ring-1 ring-hairline"
+      class="absolute top-full z-50 mt-2 w-[244px] max-w-[calc(100vw-1rem)] rounded-card bg-surface p-3 ring-1 ring-hairline {align ===
+      'right'
+        ? 'right-0 origin-top-right'
+        : 'left-0 origin-top-left'}"
       style="box-shadow: var(--shadow-card)"
       role="dialog"
       aria-label={label}
