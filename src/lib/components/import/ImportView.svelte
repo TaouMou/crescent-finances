@@ -5,6 +5,8 @@
   import { config } from '$lib/stores/config';
   import { rowsToRecords, type ParseResult } from '$lib/import/csv';
   import { guessMapping, defaultsForDelimiter } from '$lib/import/guess';
+  import { applyRules } from '$lib/rules/engine';
+  import { suggestCategories } from '$lib/rules/suggest';
   import type { BuildResult } from '$lib/import/transactions';
   import type { ImportProfile } from '$lib/types';
   import { formatMoney } from '$lib/utils/currency';
@@ -34,6 +36,14 @@
 
   let preview = $state<BuildResult | null>(null);
   let result = $state<{ added: number; duplicates: number } | null>(null);
+
+  // Inferred categories for rows no rule already categorized (txId -> categoryId).
+  let suggestions = $state<Map<string, string>>(new Map());
+  // Suggestions the user has dismissed.
+  let rejected = $state<Set<string>>(new Set());
+
+  const categoryName = (id: string) => $config?.categories.find((c) => c.id === id)?.name ?? null;
+  const suggestionCount = $derived([...suggestions.keys()].filter((id) => !rejected.has(id)).length);
 
   // Profiles + save-as.
   let selectedProfileId = $state('');
@@ -124,6 +134,22 @@
       accountId: defaultAccountId,
       source: 'csv-import'
     });
+    await computeSuggestions();
+  }
+
+  /**
+   * Suggest categories for rows that no rule already categorizes, learned from
+   * previously imported transactions. Runs after the preview is (re)built.
+   */
+  async function computeSuggestions() {
+    suggestions = new Map();
+    rejected = new Set();
+    if (!preview || preview.transactions.length === 0) return;
+    const rules = $config?.rules ?? [];
+    const snap = $state.snapshot(preview.transactions);
+    const afterRules = rules.length ? applyRules(snap, rules) : snap;
+    const history = await transactions.loadAll();
+    suggestions = suggestCategories(afterRules, history);
   }
 
   function applyProfile(id: string) {
@@ -154,7 +180,13 @@
     errorMsg = null;
     try {
       // $state proxies can't be structured-cloned to the worker — snapshot first.
-      result = await transactions.commit($state.snapshot(preview.transactions), $config);
+      // Pre-fill accepted suggestions; commit's rule pass still takes precedence
+      // (rules only overwrite on match, so suggestions only fill the gaps).
+      const snap = $state.snapshot(preview.transactions).map((tx) => {
+        const sug = suggestions.get(tx.id);
+        return sug && !rejected.has(tx.id) ? { ...tx, categoryId: sug } : tx;
+      });
+      result = await transactions.commit(snap, $config);
       if (saveProfile && newProfileName.trim() && parsed && $config) {
         const profile: ImportProfile = {
           id: crypto.randomUUID(),
@@ -184,6 +216,8 @@
     rawBytes = null;
     preview = null;
     result = null;
+    suggestions = new Map();
+    rejected = new Set();
     selectedProfileId = '';
     saveProfile = false;
     newProfileName = '';
@@ -328,7 +362,7 @@
       {#if preview}
         <div class="mt-5">
           <div class="mb-2 flex items-center justify-between text-xs text-muted">
-            <span>Preview</span>
+            <span>Preview{#if suggestionCount > 0} · {suggestionCount} auto-categorized{/if}</span>
             <span>
               {preview.transactions.length} valid{#if preview.errors.length}, {preview.errors.length} skipped{/if}
             </span>
@@ -339,6 +373,7 @@
                 <tr>
                   <th class="px-3 py-2 text-left font-medium">Date</th>
                   <th class="px-3 py-2 text-left font-medium">Label</th>
+                  <th class="px-3 py-2 text-left font-medium">Category</th>
                   <th class="px-3 py-2 text-right font-medium">Amount</th>
                 </tr>
               </thead>
@@ -347,6 +382,21 @@
                   <tr class="border-t border-hairline">
                     <td class="px-3 py-2 tnum text-muted">{tx.date}</td>
                     <td class="px-3 py-2 text-ink">{tx.label}</td>
+                    <td class="px-3 py-2">
+                      {#if suggestions.has(tx.id) && !rejected.has(tx.id)}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">
+                          {categoryName(suggestions.get(tx.id)!) ?? 'Suggested'}
+                          <button
+                            type="button"
+                            class="press text-accent/70 hover:text-accent"
+                            title="Dismiss suggestion"
+                            onclick={() => (rejected = new Set(rejected).add(tx.id))}
+                          >×</button>
+                        </span>
+                      {:else}
+                        <span class="text-xs text-muted">—</span>
+                      {/if}
+                    </td>
                     <td class={cn('px-3 py-2 text-right tnum', tx.amount < 0 ? 'text-expense' : 'text-income')}>
                       {formatMoney(tx.amount, { currency, locale, signed: true })}
                     </td>
