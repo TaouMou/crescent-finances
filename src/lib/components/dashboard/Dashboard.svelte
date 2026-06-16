@@ -64,7 +64,7 @@
 
   // Real plan from config when the user has configured sections; demo otherwise.
   const realPlan = $derived(
-    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll)
+    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
   );
   const realDist = $derived(realPlan.find((g) => g.distribution.sections.length > 0)?.distribution);
   const realTargets = $derived(realPlan.flatMap((g) => g.targets));

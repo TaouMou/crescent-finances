@@ -19,7 +19,7 @@
   const locale = $derived($config?.meta?.locale ?? demoLocale);
 
   const evaluated = $derived(
-    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll)
+    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
   );
 
   let saving = $state(false);
@@ -69,7 +69,7 @@
   }
 
   // ----- section editor -----
-  type CalcType = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum';
+  type CalcType = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum' | 'accountBalance';
   interface SectionDraft {
     id?: string;
     groupId: string;
@@ -86,6 +86,8 @@
     filterTagIds: string[];
     filterQuery: string;
     plannedMajor: number;
+    // accountBalance / target-link field
+    assetPoolId: string;
   }
   let editingSection = $state<SectionDraft | null>(null);
 
@@ -102,7 +104,8 @@
     filterAccountIds: [],
     filterTagIds: [],
     filterQuery: '',
-    plannedMajor: 0
+    plannedMajor: 0,
+    assetPoolId: ''
   });
 
   function newSection(groupId: string) {
@@ -121,7 +124,8 @@
       s.calc.type === 'fixed' ||
       s.calc.type === 'remainder' ||
       s.calc.type === 'target' ||
-      s.calc.type === 'filterSum'
+      s.calc.type === 'filterSum' ||
+      s.calc.type === 'accountBalance'
         ? s.calc.type
         : 'percentage';
     if (s.calc.type === 'percentage') d.percent = s.calc.percent;
@@ -129,6 +133,7 @@
     if (s.calc.type === 'target') {
       d.targetMajor = s.calc.targetAmount / 100;
       d.targetDate = s.calc.targetDate ?? '';
+      d.assetPoolId = s.calc.assetPoolId ?? '';
     }
     if (s.calc.type === 'filterSum') {
       d.filterCategoryIds = s.calc.filter.categoryIds ?? [];
@@ -137,6 +142,7 @@
       d.filterQuery = s.calc.filter.query ?? '';
       d.plannedMajor = (s.calc.planned ?? 0) / 100;
     }
+    if (s.calc.type === 'accountBalance') d.assetPoolId = s.calc.assetPoolId;
     editingSection = d;
   }
 
@@ -152,8 +158,11 @@
         return {
           type: 'target',
           targetAmount: Math.round((Number(d.targetMajor) || 0) * 100),
-          targetDate: d.targetDate || undefined
+          targetDate: d.targetDate || undefined,
+          assetPoolId: d.assetPoolId || undefined
         };
+      case 'accountBalance':
+        return { type: 'accountBalance', assetPoolId: d.assetPoolId };
       case 'filterSum': {
         const filter: TransactionFilter = {};
         if (d.filterCategoryIds.length) filter.categoryIds = [...d.filterCategoryIds];
@@ -227,8 +236,8 @@
         return 'Goal / target';
       case 'filterSum':
         return 'Tracked spending';
-      default:
-        return s.calc.type;
+      case 'accountBalance':
+        return 'Account / pool balance';
     }
   }
 
@@ -331,6 +340,7 @@
             <option value="remainder">Remainder of income</option>
             <option value="target">Goal / target</option>
             <option value="filterSum">Tracked spending (filter)</option>
+            <option value="accountBalance">Account / pool balance</option>
           </select>
         </label>
 
@@ -352,6 +362,29 @@
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target date (optional)</span>
             <DateField bind:value={editingSection.targetDate} clearable label="Target date" />
+          </label>
+          <label class="flex flex-col gap-1 sm:col-span-2">
+            <span class="text-xs text-muted">Track progress from (optional)</span>
+            <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+              <option value="">Not linked — progress stays 0%</option>
+              {#each $config?.assetPools ?? [] as p (p.id)}
+                <option value={p.id}>{p.name}</option>
+              {/each}
+            </select>
+          </label>
+        {:else if editingSection.calcType === 'accountBalance'}
+          <label class="flex flex-col gap-1 sm:col-span-2">
+            <span class="text-xs text-muted">Asset pool</span>
+            {#if ($config?.assetPools ?? []).length > 0}
+              <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                <option value="">Select a pool…</option>
+                {#each $config?.assetPools ?? [] as p (p.id)}
+                  <option value={p.id}>{p.name}</option>
+                {/each}
+              </select>
+            {:else}
+              <span class="text-xs text-muted">No asset pools yet — create accounts and a pool in Settings first.</span>
+            {/if}
           </label>
         {:else if editingSection.calcType === 'filterSum'}
           <label class="flex flex-col gap-1">
@@ -412,7 +445,7 @@
         <button
           class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
           onclick={saveSection}
-          disabled={saving || !editingSection.name.trim() || (editingSection.calcType === 'target' && !(Number(editingSection.targetMajor) > 0))}
+          disabled={saving || !editingSection.name.trim() || (editingSection.calcType === 'target' && !(Number(editingSection.targetMajor) > 0)) || (editingSection.calcType === 'accountBalance' && !editingSection.assetPoolId)}
         >
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
         </button>

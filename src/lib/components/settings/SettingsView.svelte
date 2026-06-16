@@ -60,6 +60,63 @@
     });
   }
 
+  // ----- accounts -----
+  let newAccName = $state('');
+  let newAccKind = $state<'bank' | 'cash' | 'card' | 'savings'>('bank');
+
+  function addAccount() {
+    const name = newAccName.trim();
+    if (!name) return;
+    patch((c) => ({ ...c, accounts: [...c.accounts, { id: crypto.randomUUID(), name, kind: newAccKind }] }));
+    newAccName = '';
+    newAccKind = 'bank';
+  }
+
+  function updateAccount(id: string, field: 'name' | 'kind', value: string) {
+    patch((c) => ({
+      ...c,
+      accounts: c.accounts.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    }));
+  }
+
+  function deleteAccount(id: string) {
+    patch((c) => ({
+      ...c,
+      accounts: c.accounts.filter((a) => a.id !== id),
+      // Drop the account from any pool that referenced it.
+      assetPools: c.assetPools.map((p) => ({ ...p, accountIds: p.accountIds.filter((x) => x !== id) }))
+    }));
+  }
+
+  // ----- asset pools -----
+  let newPoolName = $state('');
+
+  function addPool() {
+    const name = newPoolName.trim();
+    if (!name) return;
+    patch((c) => ({ ...c, assetPools: [...c.assetPools, { id: crypto.randomUUID(), name, accountIds: [] }] }));
+    newPoolName = '';
+  }
+
+  function updatePoolName(id: string, name: string) {
+    patch((c) => ({ ...c, assetPools: c.assetPools.map((p) => (p.id === id ? { ...p, name } : p)) }));
+  }
+
+  function togglePoolAccount(poolId: string, accountId: string, on: boolean) {
+    patch((c) => ({
+      ...c,
+      assetPools: c.assetPools.map((p) =>
+        p.id === poolId
+          ? { ...p, accountIds: on ? [...new Set([...p.accountIds, accountId])] : p.accountIds.filter((x) => x !== accountId) }
+          : p
+      )
+    }));
+  }
+
+  function deletePool(id: string) {
+    patch((c) => ({ ...c, assetPools: c.assetPools.filter((p) => p.id !== id) }));
+  }
+
   // ----- danger zone -----
   let confirming = $state<null | 'tx' | 'all'>(null);
 
@@ -243,6 +300,110 @@
         onclick={addCategory}
         disabled={!newCatName.trim()}
       >
+        <Plus class="h-4 w-4" /> Add
+      </button>
+    </div>
+  </Card>
+
+  <!-- Accounts -->
+  <Card>
+    <h2 class="card-title mb-1">Accounts</h2>
+    <p class="mb-4 text-xs text-muted">Where transactions live. Group accounts into pools below to track balances and goals.</p>
+
+    {#if ($config?.accounts ?? []).length > 0}
+      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
+        {#each $config?.accounts ?? [] as acc (acc.id)}
+          <li class="flex items-center gap-2 py-2">
+            <input
+              type="text"
+              value={acc.name}
+              onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
+              class="h-8 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+            <select
+              value={acc.kind}
+              onchange={(e) => updateAccount(acc.id, 'kind', e.currentTarget.value)}
+              class="h-8 shrink-0 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            >
+              <option value="bank">Bank</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="savings">Savings</option>
+            </select>
+            <button
+              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+              onclick={() => deleteAccount(acc.id)}
+              title="Delete account"
+            >
+              <Trash class="h-4 w-4" />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="mb-4 text-sm text-muted">No accounts yet.</p>
+    {/if}
+
+    <div class="flex items-center gap-2">
+      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' flex-1'} />
+      <select bind:value={newAccKind} class="h-9 shrink-0 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+        <option value="bank">Bank</option>
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+        <option value="savings">Savings</option>
+      </select>
+      <button class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50" onclick={addAccount} disabled={!newAccName.trim()}>
+        <Plus class="h-4 w-4" /> Add
+      </button>
+    </div>
+  </Card>
+
+  <!-- Asset pools -->
+  <Card>
+    <h2 class="card-title mb-1">Asset pools</h2>
+    <p class="mb-4 text-xs text-muted">A pool's balance is the net of its accounts' transactions — used by "Account / pool balance" sections and to track goal progress.</p>
+
+    {#if ($config?.accounts ?? []).length === 0}
+      <p class="mb-4 text-sm text-muted">Add an account first, then group accounts into a pool.</p>
+    {/if}
+
+    {#if ($config?.assetPools ?? []).length > 0}
+      <ul class="mb-4 space-y-3 border-y border-hairline py-3">
+        {#each $config?.assetPools ?? [] as pool (pool.id)}
+          <li class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                value={pool.name}
+                onchange={(e) => updatePoolName(pool.id, e.currentTarget.value.trim())}
+                class="h-8 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              />
+              <button class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => deletePool(pool.id)} title="Delete pool">
+                <Trash class="h-4 w-4" />
+              </button>
+            </div>
+            {#if ($config?.accounts ?? []).length > 0}
+              <div class="flex flex-wrap gap-x-4 gap-y-1.5 pl-1">
+                {#each $config?.accounts ?? [] as acc (acc.id)}
+                  <label class="flex items-center gap-1.5 text-xs text-muted">
+                    <input
+                      type="checkbox"
+                      checked={pool.accountIds.includes(acc.id)}
+                      onchange={(e) => togglePoolAccount(pool.id, acc.id, e.currentTarget.checked)}
+                    />
+                    {acc.name}
+                  </label>
+                {/each}
+              </div>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+
+    <div class="flex items-center gap-2">
+      <input type="text" bind:value={newPoolName} placeholder="New pool name" onkeydown={(e) => e.key === 'Enter' && addPool()} class={inputCls + ' flex-1'} />
+      <button class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50" onclick={addPool} disabled={!newPoolName.trim()}>
         <Plus class="h-4 w-4" /> Add
       </button>
     </div>

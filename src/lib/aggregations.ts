@@ -73,6 +73,21 @@ export function categoryBreakdown(
     });
 }
 
+/**
+ * Net balance of the given accounts: the signed sum of every transaction whose
+ * `accountId` is in the set. Used for asset-pool / `accountBalance` calcs and
+ * goal `current`. Returns 0 for an empty account list.
+ */
+export function accountsBalance(txs: Transaction[], accountIds: string[]): number {
+  if (accountIds.length === 0) return 0;
+  const set = new Set(accountIds);
+  let sum = 0;
+  for (const tx of txs) {
+    if (tx.accountId !== null && set.has(tx.accountId)) sum += tx.amount;
+  }
+  return sum;
+}
+
 export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
   const byBucket = new Map<string, { income: number; spending: number }>();
 

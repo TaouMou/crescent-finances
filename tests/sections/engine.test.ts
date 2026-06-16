@@ -86,10 +86,24 @@ describe('evaluateDistribution', () => {
     expect(dist.sections[1].planned).toBe(0);
   });
 
-  it('excludes target and accountBalance sections from the distribution bars', () => {
+  it('excludes target sections from the distribution bars', () => {
     const goal = makeSection({ id: 's1', order: 0, calc: { type: 'target', targetAmount: 800_000 } });
     const dist = evaluateDistribution(group, [goal], txs);
     expect(dist.sections).toHaveLength(0);
+  });
+
+  it('accountBalance section shows the linked pool balance', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000, accountId: 'acc1' }),
+      makeTx({ id: 't2', amount: -50_000, accountId: 'acc1' }),
+      makeTx({ id: 't3', amount: -10_000, accountId: 'other' })
+    ];
+    const pools = [{ id: 'pool1', name: 'Cash', accountIds: ['acc1'] }];
+    const sec = makeSection({ id: 's1', name: 'Liquidity', order: 0, calc: { type: 'accountBalance', assetPoolId: 'pool1' } });
+    const dist = evaluateDistribution(group, [sec], data, pools);
+    // 400_000 - 50_000 = 350_000 on acc1 (the 'other' account is not in the pool)
+    expect(dist.sections[0].planned).toBe(350_000);
+    expect(dist.sections[0].actual).toBe(350_000);
   });
 
   it('handles empty config / no income without dividing by zero', () => {
@@ -142,12 +156,23 @@ describe('evaluateDistribution', () => {
 });
 
 describe('evaluateTargets', () => {
-  it('extracts target sections with current=0 and the configured target', () => {
+  it('extracts target sections with current=0 when not linked to a pool', () => {
     const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, targetDate: '2026-12-01' } });
     const other = makeSection({ id: 's1', order: 1, calc: { type: 'fixed', amount: 1 } });
     const targets = evaluateTargets([goal, other]);
     expect(targets).toHaveLength(1);
     expect(targets[0]).toMatchObject({ id: 't1', name: 'Emergency fund', current: 0, target: 800_000, targetDate: '2026-12-01' });
+  });
+
+  it('reads current from the linked asset pool balance', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 500_000, accountId: 'sav' }),
+      makeTx({ id: 'x', amount: -40_000, accountId: 'sav' })
+    ];
+    const pools = [{ id: 'pool1', name: 'Savings', accountIds: ['sav'] }];
+    const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, assetPoolId: 'pool1' } });
+    const targets = evaluateTargets([goal], data, pools);
+    expect(targets[0].current).toBe(460_000); // 500_000 - 40_000
   });
 });
 

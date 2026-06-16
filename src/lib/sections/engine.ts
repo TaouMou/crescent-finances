@@ -7,19 +7,26 @@
  *
  * Money is integer minor units (cents), signed: negative = expense.
  *
- * SLICE NOTE: `filterSum` sections now derive a real *actual* from matching
+ * SLICE NOTE: `filterSum` sections derive a real *actual* from matching
  * transactions (see src/lib/sections/filter.ts). `percentage`/`fixed`/`remainder`
  * are income-allocation intents with no transaction linkage, so their `actual`
- * mirrors `planned` ("on plan"). `accountBalance` and target `current` (asset
- * pools) remain deferred — target `current` is still 0.
+ * mirrors `planned` ("on plan"). `accountBalance` sections and goal `current`
+ * read a linked asset pool's net balance (sum of its accounts' transactions).
  */
 
-import type { Section, SectionCalc, SectionGroup, Transaction } from '$lib/types';
+import type { AssetPool, Section, SectionCalc, SectionGroup, Transaction } from '$lib/types';
 import type { DistributionGroup, DistributionSection, SectionKind, TargetSection } from '$lib/seed/dashboard';
-import { summarize } from '$lib/aggregations';
+import { accountsBalance, summarize } from '$lib/aggregations';
 import { filterSum } from './filter';
 
 type TargetCalc = Extract<SectionCalc, { type: 'target' }>;
+
+/** Net balance of the named asset pool (sum of its accounts' transactions); 0 if unknown. */
+function poolBalance(pools: AssetPool[], assetPoolId: string | undefined, txs: Transaction[]): number {
+  if (!assetPoolId) return 0;
+  const pool = pools.find((p) => p.id === assetPoolId);
+  return pool ? accountsBalance(txs, pool.accountIds) : 0;
+}
 
 /** Sections belonging to a group (by back-reference or group membership list), ordered. */
 export function sectionsOfGroup(group: SectionGroup, sections: Section[]): Section[] {
@@ -33,18 +40,17 @@ export function sectionsOfGroup(group: SectionGroup, sections: Section[]): Secti
 /**
  * Evaluate a group into a planned-vs-actual distribution view. The group source
  * is the period income; each member section's planned amount comes from its calc
- * (`percentage` of income, `fixed`, `remainder`, or a `filterSum` planned hint).
- * `target`/`accountBalance` sections are excluded (targets render separately).
+ * (`percentage` of income, `fixed`, `remainder`, a `filterSum` planned hint, or
+ * an `accountBalance` pool balance). `target` sections render separately.
  */
 export function evaluateDistribution(
   group: SectionGroup,
   sections: Section[],
-  txs: Transaction[]
+  txs: Transaction[],
+  pools: AssetPool[] = []
 ): DistributionGroup {
   const total = summarize(txs).income;
-  const members = sectionsOfGroup(group, sections).filter(
-    (s) => s.calc.type !== 'target' && s.calc.type !== 'accountBalance'
-  );
+  const members = sectionsOfGroup(group, sections).filter((s) => s.calc.type !== 'target');
 
   // First pass: planned for everything except remainder.
   const planned = new Map<string, number>();
@@ -53,6 +59,7 @@ export function evaluateDistribution(
     if (c.type === 'percentage') planned.set(s.id, Math.round((c.percent / 100) * total));
     else if (c.type === 'fixed') planned.set(s.id, c.amount);
     else if (c.type === 'filterSum') planned.set(s.id, c.planned ?? 0);
+    else if (c.type === 'accountBalance') planned.set(s.id, Math.abs(poolBalance(pools, c.assetPoolId, txs)));
   }
   // Second pass: remainder absorbs whatever income is left after the rest.
   const allocated = [...planned.values()].reduce((a, b) => a + b, 0);
@@ -72,8 +79,9 @@ export function evaluateDistribution(
             ? Math.round((p / total) * 100)
             : undefined;
     // filterSum sections draw a real actual from matching transactions; the
-    // others (percentage/fixed/remainder) have no tx linkage, so actual mirrors
-    // planned. Actual is a positive magnitude to match how planned is expressed.
+    // others (percentage/fixed/remainder/accountBalance) carry actual == planned
+    // (a balance and the allocation intents have no separate "actual"). Actual is
+    // a positive magnitude to match how planned is expressed.
     const actual = s.calc.type === 'filterSum' ? Math.abs(filterSum(txs, s.calc.filter)) : p;
     return { id: s.id, name: s.name, color: s.color, kind, plannedPct, planned: p, actual };
   });
@@ -81,8 +89,15 @@ export function evaluateDistribution(
   return { id: group.id, name: group.name, source: 'Income', total, sections: distSections };
 }
 
-/** Extract `target` sections as goal-progress items, ordered. `current` is 0 until asset pools land. */
-export function evaluateTargets(sections: Section[]): TargetSection[] {
+/**
+ * Extract `target` sections as goal-progress items, ordered. `current` reads the
+ * linked asset pool's balance when `assetPoolId` is set, else 0.
+ */
+export function evaluateTargets(
+  sections: Section[],
+  txs: Transaction[] = [],
+  pools: AssetPool[] = []
+): TargetSection[] {
   return sections
     .filter((s) => s.calc.type === 'target')
     .sort((a, b) => a.order - b.order)
@@ -92,7 +107,7 @@ export function evaluateTargets(sections: Section[]): TargetSection[] {
         id: s.id,
         name: s.name,
         color: s.color,
-        current: 0,
+        current: Math.max(0, poolBalance(pools, c.assetPoolId, txs)),
         target: c.targetAmount,
         targetDate: c.targetDate
       };
@@ -111,13 +126,14 @@ export interface EvaluatedGroup {
 export function evaluatePlan(
   groups: SectionGroup[],
   sections: Section[],
-  txs: Transaction[]
+  txs: Transaction[],
+  pools: AssetPool[] = []
 ): EvaluatedGroup[] {
   return [...groups]
     .sort((a, b) => a.order - b.order)
     .map((group) => ({
       group,
-      distribution: evaluateDistribution(group, sections, txs),
-      targets: evaluateTargets(sectionsOfGroup(group, sections))
+      distribution: evaluateDistribution(group, sections, txs, pools),
+      targets: evaluateTargets(sectionsOfGroup(group, sections), txs, pools)
     }));
 }
