@@ -77,10 +77,17 @@
           ticks: { show: false },
           font: '12px Inter Variable, Inter, sans-serif',
           space: 64,
-          values: (_u: UPlotInstance, splits: number[]) =>
-            splits.map((s: number) =>
-              new Date(s * 1000).toLocaleDateString(locale, { month: 'short' })
-            )
+          values: (_u: UPlotInstance, splits: number[]) => {
+            if (splits.length === 0) return [];
+            const rangeS = splits[splits.length - 1] - splits[0];
+            let opts: Intl.DateTimeFormatOptions;
+            if (rangeS < 86400 * 60)       opts = { day: 'numeric', month: 'short' };
+            else if (rangeS < 86400 * 730) opts = { month: 'short' };
+            else                           opts = { year: 'numeric' };
+            return splits.map((s: number) =>
+              new Date(s * 1000).toLocaleDateString(locale, opts)
+            );
+          }
         },
         {
           stroke: ink,
