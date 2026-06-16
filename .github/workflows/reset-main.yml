@@ -1,0 +1,36 @@
+name: Squash history to single commit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  squash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Squash all history into one commit and force-push main + dev
+        run: |
+          git config user.name "MT"
+          git config user.email "94767268+TaouMou@users.noreply.github.com"
+
+          # Create orphan branch with no history
+          git checkout --orphan clean-start
+
+          # Stage everything as-is
+          git add -A
+
+          # Single clean commit
+          git commit -m "Initial commit"
+
+          # Force-push to both branches
+          git push origin clean-start:main --force
+          git push origin clean-start:dev --force
+
+          echo "Done — main and dev now have a single clean commit."

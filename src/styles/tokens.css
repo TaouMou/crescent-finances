@@ -1,0 +1,59 @@
+/*
+ * Tide palette — design tokens.
+ * Values are space-separated RGB channels so Tailwind opacity modifiers work:
+ *   color: rgb(var(--c-accent) / 0.5)
+ * One accent (teal); neutrals stay quiet; income/expense/warn are muted semantics.
+ */
+:root {
+  --c-paper: 235 230 220;     /* #EBE6DC warm parchment page */
+  --c-surface: 250 246 238;   /* #FAF6EE warm cream cards */
+  --c-ink: 26 29 33;          /* #1A1D21 */
+  --c-muted: 110 122 130;     /* #6E7A82 */
+  --c-hairline: 214 208 196;  /* #D6D0C4 warm hairline */
+  --c-accent: 13 168 130;     /* #0DA882 vivid teal */
+  --c-paper-deep: 222 216 204; /* #DED8CC a touch darker than paper */
+
+  --c-income: 26 158 111;     /* #1A9E6F vivid green */
+  --c-expense: 208 56 45;     /* #D0382D vivid red */
+  --c-warn: 212 152 32;       /* #D49820 vivid amber */
+
+  --shadow-card: 0 1px 2px rgb(26 29 33 / 0.04), 0 6px 16px -4px rgb(26 29 33 / 0.08),
+    0 14px 32px -10px rgb(26 29 33 / 0.07);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 250ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  --c-paper: 19 22 24;        /* #131618 */
+  --c-paper-deep: 13 15 17;   /* darker than paper, for the bg gradient */
+  --c-surface: 27 31 34;      /* #1B1F22 */
+  --c-ink: 232 234 233;       /* #E8EAE9 */
+  --c-muted: 138 148 155;     /* #8A949B */
+  --c-hairline: 42 47 51;     /* #2A2F33 */
+  --c-accent: 61 161 146;     /* #3DA192 */
+
+  --c-income: 75 165 124;
+  --c-expense: 209 106 98;
+  --c-warn: 199 158 74;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 22px -6px rgb(0 0 0 / 0.5),
+    0 18px 40px -12px rgb(0 0 0 / 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,72 @@
+<script lang="ts">
+  import { formatMoney, formatPercent } from '$lib/utils/currency';
+  import type { DistributionGroup } from '$lib/seed/dashboard';
+
+  let {
+    group,
+    currency = 'EUR',
+    locale = 'en-US'
+  }: { group: DistributionGroup; currency?: string; locale?: string } = $props();
+
+  const fmt = (n: number) => formatMoney(n, { currency, locale });
+
+  const plannedTotal = $derived(group.sections.reduce((s, x) => s + x.planned, 0));
+  const actualTotal = $derived(group.sections.reduce((s, x) => s + x.actual, 0));
+
+</script>
+
+<div class="space-y-5">
+  <div class="space-y-1">
+    <p class="text-sm text-muted">Source · {group.source}</p>
+    <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
+  </div>
+
+  <!-- Planned vs actual stacked bars (the signature comparison) -->
+  <div class="space-y-3">
+    {#each [{ label: 'Planned', total: plannedTotal, pick: (s: (typeof group.sections)[number]) => s.planned }, { label: 'Actual', total: actualTotal, pick: (s: (typeof group.sections)[number]) => s.actual }] as bar (bar.label)}
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-xs text-muted">
+          <span>{bar.label}</span>
+          <span class="tnum">{fmt(bar.total)}</span>
+        </div>
+        <div class="flex h-8 w-full gap-1.5">
+          {#each group.sections as s (s.id)}
+            <div
+              class="h-full rounded-[5px] shadow-sm ring-1 ring-inset ring-black/5"
+              style={`flex:${bar.pick(s)} 0 0;background:${s.color};transition:flex-grow var(--dur-slow) var(--ease-out)`}
+              title={`${s.name} · ${fmt(bar.pick(s))}`}
+            ></div>
+          {/each}
+        </div>
+      </div>
+    {/each}
+  </div>
+
+  <!-- Per-section breakdown -->
+  <ul class="divide-y divide-hairline">
+    {#each group.sections as s (s.id)}
+      {@const delta = s.actual - s.planned}
+      <li class="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 py-2.5 first:pt-0 last:pb-0">
+        <span class="h-2.5 w-2.5 rounded-[3px]" style={`background:${s.color}`}></span>
+        <div class="min-w-0">
+          <p class="truncate text-sm text-ink">{s.name}</p>
+          <p class="text-xs text-muted">
+            {#if s.kind === 'remainder'}
+              Remainder
+            {:else if s.plannedPct != null}
+              {formatPercent(s.plannedPct, locale)} of {group.source.toLowerCase()}
+            {/if}
+          </p>
+        </div>
+        <div class="text-right">
+          <p class="tnum text-sm text-ink">{fmt(s.actual)}</p>
+          <p
+            class={`tnum text-xs ${delta > 0 ? 'text-expense' : delta < 0 ? 'text-income' : 'text-muted'}`}
+          >
+            {delta === 0 ? 'on plan' : `${delta > 0 ? '+' : ''}${fmt(delta)}`}
+          </p>
+        </div>
+      </li>
+    {/each}
+  </ul>
+</div>

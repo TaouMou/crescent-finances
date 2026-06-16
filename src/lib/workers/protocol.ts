@@ -1,0 +1,128 @@
+/**
+ * Typed request/response protocol shared between the main thread and the single
+ * crypto/import worker. Every request carries a `reqId`; the worker echoes it on
+ * the matching response so the client can resolve the right promise.
+ */
+
+import type { EncryptedBlob } from '$lib/crypto/crypto';
+import type { ParseResult } from '$lib/import/csv';
+import type { Delimiter, Encoding } from '$lib/import/detect';
+import type { BuildResult, BuildSettings } from '$lib/import/transactions';
+
+export interface SetupReq {
+  type: 'setup';
+  passphrase: string;
+  iterations?: number;
+}
+export interface SetupRes {
+  saltB64: string;
+  iterations: number;
+  verifier: EncryptedBlob;
+}
+
+export interface UnlockReq {
+  type: 'unlock';
+  passphrase: string;
+  saltB64: string;
+  iterations: number;
+  verifier: EncryptedBlob;
+}
+export interface UnlockRes {
+  ok: boolean;
+}
+
+export interface LockReq {
+  type: 'lock';
+}
+
+/** Persist the current key to the session store ("remember on this device"). */
+export interface RememberReq {
+  type: 'remember';
+}
+/** Restore a remembered key if present and not older than maxAgeMs. */
+export interface ResumeReq {
+  type: 'resume';
+  maxAgeMs: number;
+}
+/** Drop any remembered session key. */
+export interface ForgetReq {
+  type: 'forget';
+}
+/** Refresh the remembered session's activity timestamp. */
+export interface TouchReq {
+  type: 'touch';
+}
+
+export interface EncryptReq {
+  type: 'encrypt';
+  value: unknown;
+}
+export interface DecryptReq {
+  type: 'decrypt';
+  blob: EncryptedBlob;
+}
+
+export interface EncryptManyReq {
+  type: 'encryptMany';
+  values: unknown[];
+}
+export interface DecryptManyReq {
+  type: 'decryptMany';
+  blobs: EncryptedBlob[];
+}
+
+export interface ParseReq {
+  type: 'parse';
+  bytes: ArrayBuffer;
+  /** Overrides for re-parsing after the user adjusts detection. */
+  delimiter?: Delimiter;
+  encoding?: Encoding;
+  hasHeader?: boolean;
+}
+
+export interface BuildReq {
+  type: 'buildTransactions';
+  records: Array<Record<string, string>>;
+  settings: BuildSettings;
+}
+
+export type WorkerRequestBody =
+  | SetupReq
+  | UnlockReq
+  | LockReq
+  | RememberReq
+  | ResumeReq
+  | ForgetReq
+  | TouchReq
+  | EncryptReq
+  | DecryptReq
+  | EncryptManyReq
+  | DecryptManyReq
+  | ParseReq
+  | BuildReq;
+
+/** The crypto subset handled by CryptoCore (parse/build are handled separately). */
+export type CryptoRequestBody = Exclude<WorkerRequestBody, ParseReq | BuildReq>;
+
+export type WorkerRequest = WorkerRequestBody & { reqId: number };
+
+export type WorkerResponse =
+  | { reqId: number; ok: true; result: unknown }
+  | { reqId: number; ok: false; error: string };
+
+/** Maps a request `type` to its result shape, for typed client calls. */
+export interface ResultMap {
+  setup: SetupRes;
+  unlock: UnlockRes;
+  lock: void;
+  remember: { ok: boolean };
+  resume: { resumed: boolean };
+  forget: void;
+  touch: void;
+  encrypt: EncryptedBlob;
+  decrypt: unknown;
+  encryptMany: EncryptedBlob[];
+  decryptMany: unknown[];
+  parse: ParseResult;
+  buildTransactions: BuildResult;
+}
