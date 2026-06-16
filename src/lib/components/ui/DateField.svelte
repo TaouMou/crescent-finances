@@ -126,7 +126,7 @@
       type="button"
       onclick={clear}
       aria-label="Clear {label.toLowerCase()}"
-      class="press absolute right-1 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-control text-muted hover:bg-ink/10 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      class="absolute right-1 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-control text-muted transition duration-150 ease-out [-webkit-tap-highlight-color:transparent] hover:bg-ink/10 hover:text-ink active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       <X class="h-3 w-3" />
     </button>
