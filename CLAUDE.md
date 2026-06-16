@@ -134,6 +134,16 @@ npm run build && npx vite preview
 - **`feature/xxx`** — branch off `dev`, PR back to `dev` when done.
 - Deploy (GitHub Pages) triggered manually via `workflow_dispatch` on `deploy-pages.yml`.
 
+### Git/GitHub conventions (for Claude)
+
+- **One concern per PR.** Bugs, refactors, and polish go in separate PRs, even within a UI pass. Bundle only trivial fixes in code already being touched, as their own commit.
+- **Branch naming:** `feature/<short-desc>`, `fix/<short-desc>`, `polish/<short-desc>`, `refactor/<short-desc>`. Kebab-case. Always cut from fresh `dev`.
+- **Commits:** Conventional Commits — `feat:`, `fix:`, `refactor:`, `style:`, `chore:`. Subject ≤ 72 chars, imperative mood, describes the *why* when non-obvious.
+- **PRs target `dev`**, never `main` directly. Rebase later branches on `dev` as earlier ones merge.
+- **Verify before pushing:** `npm run check && npm test` (and `npm run build` if build/output is touched).
+- **UI changes:** edit design tokens, not hard-coded hex; verify light + dark; attach before/after screenshots (`scripts/shot.mjs`) to the PR.
+- **Never** push to `main`/`dev` directly or open a PR unless explicitly asked.
+
 ## Status
 
 - **M1** — Encrypted vault foundation: crypto worker, PBKDF2/AES-GCM, Dexie schema, LockScreen, config schema, backup format. ✅
