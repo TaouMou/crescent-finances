@@ -12,7 +12,7 @@
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
-  import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
+  import { categoryBreakdown, dailyCumulative } from '$lib/aggregations';
   import { evaluatePlan } from '$lib/sections/engine';
 
   // ----- data -----
@@ -46,16 +46,8 @@
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
 
-  // Real monthly net series (epoch-seconds + value) for uPlot
-  const netSeries = $derived.by(() => {
-    const monthly = monthlyNets($txAll);
-    return monthly
-      .filter((m) => m.bucket >= fromStr.slice(0, 7) && m.bucket <= toStr.slice(0, 7))
-      .map((m) => ({
-        t: Math.floor(new Date(`${m.bucket}-01T00:00:00Z`).getTime() / 1000),
-        value: m.cumulative
-      }));
-  });
+  // Daily cumulative net series (epoch-seconds + value) for uPlot
+  const netSeries = $derived.by(() => dailyCumulative($txAll, fromStr, toStr));
 
   // Spending by category for current period
   const catSpend = $derived.by(() => {
