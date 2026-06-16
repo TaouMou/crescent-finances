@@ -39,7 +39,7 @@
   let planOpen = $state(true);
   // Section groups are user-created; shown here from a demo config.
   const planGroups = [
-    { id: 'monthly', label: 'Monthly plan' },
+    { id: 'monthly', label: 'Breakdown' },
     { id: 'g2', label: 'Goals' }
   ];
 
