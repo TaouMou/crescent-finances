@@ -16,6 +16,7 @@
   let mobileOpen = $state(false);
 
   const status = $derived($vault.status);
+  const devBypass = import.meta.env.VITE_DEV_BYPASS === 'true';
 
   // ----- hash router -----
   let route = $state(currentRoute());
@@ -70,9 +71,9 @@
   <div class="flex h-screen w-screen items-center justify-center bg-paper text-muted" out:fade={{ duration: 150 }}>
     <span class="text-sm">Loading…</span>
   </div>
-{:else if status === 'uninitialized'}
+{:else if !devBypass && status === 'uninitialized'}
   <LockScreen firstRun />
-{:else if status === 'locked' || status === 'unlocking'}
+{:else if !devBypass && (status === 'locked' || status === 'unlocking')}
   <LockScreen />
 {:else}
   <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
