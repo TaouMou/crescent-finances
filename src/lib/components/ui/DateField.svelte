@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CalendarDots, CaretLeft, CaretRight } from 'phosphor-svelte';
+  import { CalendarDots, CaretLeft, CaretRight, X } from 'phosphor-svelte';
   import { scale } from 'svelte/transition';
   import { toISODate } from '$lib/utils/dates';
 
@@ -7,15 +7,28 @@
     value = $bindable(),
     min,
     max,
-    label
-  }: { value: string; min?: string; max?: string; label: string } = $props();
+    label,
+    clearable = false
+  }: {
+    value: string;
+    min?: string;
+    max?: string;
+    label: string;
+    clearable?: boolean;
+  } = $props();
 
   const reduce =
     typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Parse an ISO date string, falling back to today when empty/invalid.
+  function parse(v: string): Date {
+    const d = v ? new Date(`${v}T00:00:00`) : new Date();
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
   let open = $state(false);
   // The month currently shown in the popover.
-  let view = $state(new Date(`${value}T00:00:00`));
+  let view = $state(parse(value));
 
   const today = new Date();
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -59,12 +72,16 @@
   }
 
   function toggle() {
-    if (!open) view = new Date(`${value}T00:00:00`);
+    if (!open) view = parse(value);
     open = !open;
   }
   function pick(d: Date) {
     if (disabled(d)) return;
     value = toISODate(d);
+    open = false;
+  }
+  function clear() {
+    value = '';
     open = false;
   }
   function step(n: number) {
@@ -85,11 +102,22 @@
     aria-label={label}
     aria-haspopup="dialog"
     aria-expanded={open}
-    class="press inline-flex h-8 items-center gap-1.5 rounded-control border border-hairline bg-surface px-2.5 text-xs font-medium text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+    class="press inline-flex h-8 items-center gap-1.5 rounded-control border border-hairline bg-surface py-0 pl-2.5 text-xs font-medium text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {clearable && value ? 'pr-7' : 'pr-2.5'}"
   >
     <CalendarDots class="h-3.5 w-3.5 shrink-0" />
     <span class="tnum whitespace-nowrap">{display}</span>
   </button>
+
+  {#if clearable && value}
+    <button
+      type="button"
+      onclick={clear}
+      aria-label="Clear {label.toLowerCase()}"
+      class="press absolute right-1 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-control text-muted hover:bg-ink/10 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+    >
+      <X class="h-3 w-3" />
+    </button>
+  {/if}
 
   {#if open}
     <!-- click-away layer -->
