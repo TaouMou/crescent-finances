@@ -29,12 +29,12 @@ export interface CategorySpend {
 
 /** Colors are user-defined per category; these are demo values. */
 export const spendingByCategory: CategorySpend[] = [
-  { name: 'Groceries', color: '#14776B', amount: 78_200 },
-  { name: 'Rent', color: '#3D6B7A', amount: 95_000 },
-  { name: 'Transport', color: '#7A8B5A', amount: 31_400 },
-  { name: 'Dining', color: '#A8703E', amount: 27_650 },
+  { name: 'Groceries', color: '#0DA882', amount: 78_200 },
+  { name: 'Rent',      color: '#2B8AB5', amount: 95_000 },
+  { name: 'Transport', color: '#6B9E40', amount: 31_400 },
+  { name: 'Dining',    color: '#D4843A', amount: 27_650 },
   { name: 'Utilities', color: '#6E7A82', amount: 21_300 },
-  { name: 'Other', color: '#9A9FA5', amount: 14_900 }
+  { name: 'Other',     color: '#9A9FA5', amount: 14_900 }
 ];
 
 export interface NetPoint {
@@ -95,9 +95,9 @@ export const distribution: DistributionGroup = {
   source: 'Income',
   total: summary.income,
   sections: [
-    { id: 's1', name: 'Savings', color: '#14776B', kind: 'percentage', plannedPct: 30, planned: 123_600, actual: 123_600 },
-    { id: 's2', name: 'Investing', color: '#3D6B7A', kind: 'percentage', plannedPct: 20, planned: 82_400, actual: 70_000 },
-    { id: 's3', name: 'Spending', color: '#A8703E', kind: 'remainder', plannedPct: 50, planned: 206_000, actual: 268_450 }
+    { id: 's1', name: 'Savings',   color: '#0DA882', kind: 'percentage', plannedPct: 30, planned: 123_600, actual: 123_600 },
+    { id: 's2', name: 'Investing', color: '#2B8AB5', kind: 'percentage', plannedPct: 20, planned: 82_400,  actual: 70_000  },
+    { id: 's3', name: 'Spending',  color: '#D4843A', kind: 'remainder',  plannedPct: 50, planned: 206_000, actual: 268_450 }
   ]
 };
 

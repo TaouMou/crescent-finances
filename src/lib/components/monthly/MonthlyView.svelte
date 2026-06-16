@@ -58,16 +58,16 @@
     <div class="flex h-40 items-center justify-center text-sm text-muted">Decrypting…</div>
   {:else}
     <!-- Summary strip -->
-    <div class="grid grid-cols-3 gap-3">
+    <div class="card rounded-card grid grid-cols-3 divide-x divide-hairline">
       {#each [
-        { label: 'Total income', value: totals.income, tone: 'text-income' },
-        { label: 'Total spending', value: totals.spending, tone: 'text-expense' },
-        { label: 'Net', value: totals.net, tone: totals.net >= 0 ? 'text-income' : 'text-expense', signed: true }
+        { label: 'Total income',   value: totals.income,   tone: 'text-income',  signed: false },
+        { label: 'Total spending', value: totals.spending, tone: 'text-expense', signed: false },
+        { label: 'Net',            value: totals.net,      tone: totals.net >= 0 ? 'text-income' : 'text-expense', signed: true }
       ] as s (s.label)}
-        <div class="card rounded-card p-4">
+        <div class="px-5 py-4">
           <p class="text-xs text-muted">{s.label}</p>
-          <p class={cn('tnum mt-1 text-base font-semibold', s.tone)}>
-            {fmt(s.value, s.signed ?? false)}
+          <p class={cn('tnum mt-2 text-lg font-semibold', s.tone)}>
+            {fmt(s.value, s.signed)}
           </p>
         </div>
       {/each}
