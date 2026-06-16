@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
   import ImportView from '$lib/components/import/ImportView.svelte';
+  import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
+  import RulesView from '$lib/components/rules/RulesView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -15,9 +17,9 @@
 
   const status = $derived($vault.status);
 
-  // Minimal hash routing (a precursor to the M3 router): map #import etc. to a
-  // view; everything else falls back to the dashboard.
+  // ----- hash router -----
   let route = $state(currentRoute());
+
   function currentRoute(): string {
     return (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'dashboard';
   }
@@ -25,22 +27,41 @@
   const titles: Record<string, string> = {
     dashboard: 'Dashboard',
     import: 'Import',
-    transactions: 'Transactions'
+    transactions: 'Transactions',
+    rules: 'Rules',
+    settings: 'Settings'
   };
   const title = $derived(titles[route] ?? 'Dashboard');
 
+  function navigate(newRoute: string) {
+    if (newRoute === route) return;
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(
+        () => {
+          route = newRoute;
+        }
+      );
+    } else {
+      route = newRoute;
+    }
+  }
+
   onMount(() => {
     vault.init();
-    const onHash = () => (route = currentRoute());
+
+    const onHash = () => navigate(currentRoute());
     window.addEventListener('hashchange', onHash);
+
     return () => window.removeEventListener('hashchange', onHash);
   });
 
-  // Load the config + transaction count once the vault is unlocked.
+  // Load config + transactions once unlocked; reset cache on lock.
   $effect(() => {
     if (status === 'unlocked') {
       config.load();
-      transactions.refreshCount();
+      transactions.loadAll();
+    } else if (status === 'locked') {
+      transactions.reset();
     }
   });
 </script>
@@ -64,7 +85,7 @@
     {#if mobileOpen}
       <div
         class="fixed inset-0 z-40 h-full w-full overscroll-contain md:hidden"
-        transition:fly={{ x: -360, duration: 200, opacity: 1 }}
+        transition:fade={{ duration: 200 }}
       >
         <Sidebar active={route} fullWidth onClose={() => (mobileOpen = false)} />
       </div>
@@ -72,9 +93,16 @@
 
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar {title} period="June 2026" onMenu={() => (mobileOpen = true)} />
-      <main class={`dashboard-surface flex-1 ${mobileOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <main
+        class={`dashboard-surface flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
+        style="view-transition-name: main-content;"
+      >
         {#if route === 'import'}
           <ImportView />
+        {:else if route === 'transactions'}
+          <TransactionsView />
+        {:else if route === 'rules'}
+          <RulesView />
         {:else}
           <Dashboard />
         {/if}
@@ -82,3 +110,22 @@
     </div>
   </div>
 {/if}
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    :global(::view-transition-old(main-content)) {
+      animation: 150ms ease-out both fade-out;
+    }
+    :global(::view-transition-new(main-content)) {
+      animation: 200ms ease-in both fade-in;
+    }
+    @keyframes fade-out {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  }
+</style>

@@ -103,6 +103,11 @@ export class TransactionRepo {
     return this.database.transactions.orderBy('dateBucket').toArray();
   }
 
+  /** Overwrite the encrypted blob for existing rows (same id/fingerprint). */
+  async bulkUpdateBlobs(rows: StoredTransaction[]): Promise<void> {
+    await this.database.transactions.bulkPut(rows);
+  }
+
   async clear(): Promise<void> {
     await this.database.transactions.clear();
   }

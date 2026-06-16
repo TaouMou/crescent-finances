@@ -9,7 +9,8 @@
     Moon,
     Sun,
     Lock,
-    X
+    X,
+    Funnel
   } from 'phosphor-svelte';
   import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
@@ -31,7 +32,8 @@
   // Notion-style nested navigation. "Plan" expands into user-defined section groups.
   const nav = [
     { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
-    { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight }
+    { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight },
+    { id: 'rules', label: 'Rules', icon: Funnel }
   ];
 
   let planOpen = $state(true);
