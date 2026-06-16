@@ -5,7 +5,7 @@
 
 import { writable, get } from 'svelte/store';
 import { cryptoWorker } from '$lib/workers/cryptoClient';
-import { transactionRepo } from '$lib/db/repos';
+import { transactionRepo, dateBucketOf } from '$lib/db/repos';
 import { applyRules } from '$lib/rules/engine';
 import type { AppConfig, Transaction } from '$lib/types';
 
@@ -125,6 +125,22 @@ function createTransactionsStore() {
     }
   }
 
+  /**
+   * Set a single transaction's category, re-encrypting just that row and
+   * updating the in-memory cache in place so the table reflects it instantly.
+   * Date/amount/label are unchanged, so the fingerprint and dateBucket are too.
+   */
+  async function updateCategory(txId: string, categoryId: string | null): Promise<void> {
+    const current = get(all).find((t) => t.id === txId);
+    if (!current || current.categoryId === categoryId) return;
+    const next: Transaction = { ...current, categoryId };
+    const [blob] = await cryptoWorker.encryptMany([next]);
+    await transactionRepo.bulkUpdateBlobs([
+      { id: next.id, fingerprint: next.fingerprint, dateBucket: dateBucketOf(next.date), blob }
+    ]);
+    all.update((list) => list.map((t) => (t.id === txId ? next : t)));
+  }
+
   return {
     subscribe: count.subscribe,
     all: { subscribe: all.subscribe },
@@ -133,7 +149,8 @@ function createTransactionsStore() {
     loadAll,
     reset,
     commit,
-    applyAndSave
+    applyAndSave,
+    updateCategory
   };
 }
 
