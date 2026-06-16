@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, Info } from 'phosphor-svelte';
+  import { Check, Info, ArrowUpRight } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import SummaryCards from './SummaryCards.svelte';
@@ -8,18 +8,27 @@
   import NetOverTime from '$lib/components/charts/NetOverTime.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
-  import {
-    spendingByCategory,
-    netSeries,
-    anomalies,
-    distribution,
-    targets,
-    demoCurrency,
-    demoLocale
-  } from '$lib/seed/dashboard';
+  import { anomalies, distribution, targets, demoCurrency, demoLocale } from '$lib/seed/dashboard';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
+  import { transactions } from '$lib/stores/transactions';
+  import { config } from '$lib/stores/config';
+  import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
 
-  // Timeframe for the net-over-time chart: two date selectors + a span label.
+  // ----- data -----
+  const txAll = transactions.all;
+  const txCount = transactions;
+  const txLoading = transactions.loading;
+
+  $effect(() => {
+    transactions.loadAll();
+  });
+
+  const currency = $derived($config?.meta?.currency ?? demoCurrency);
+  const locale = $derived($config?.meta?.locale ?? demoLocale);
+  const categories = $derived($config?.categories ?? []);
+  const hasData = $derived($txCount > 0);
+
+  // ----- net-over-time chart -----
   const today = new Date();
   const aYearAgo = new Date(today);
   aYearAgo.setFullYear(today.getFullYear() - 1);
@@ -29,25 +38,51 @@
 
   const fromDate = $derived(new Date(`${fromStr}T00:00:00`));
   const toDate = $derived(new Date(`${toStr}T23:59:59`));
-  const filteredNet = $derived(
-    netSeries.filter((p) => {
-      const t = p.t * 1000;
-      return t >= fromDate.getTime() && t <= toDate.getTime();
-    })
-  );
+
   const spanLabel = $derived.by(() => {
     const { months, days } = monthsDaysBetween(fromDate, toDate);
     const span = formatSpan(months, days);
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
 
-  // Distribution status, shown as a colored pill in the card header.
+  // Real monthly net series (epoch-seconds + value) for uPlot
+  const netSeries = $derived.by(() => {
+    const monthly = monthlyNets($txAll);
+    return monthly
+      .filter((m) => m.bucket >= fromStr.slice(0, 7) && m.bucket <= toStr.slice(0, 7))
+      .map((m) => ({
+        t: Math.floor(new Date(`${m.bucket}-01T00:00:00Z`).getTime() / 1000),
+        value: m.cumulative
+      }));
+  });
+
+  // Spending by category for current period
+  const catSpend = $derived.by(() => {
+    const breakdown = categoryBreakdown($txAll, categories, fromStr, toStr);
+    return breakdown.map((b) => ({ name: b.name, color: b.color, amount: b.amount }));
+  });
+
+  // Distribution status (seeded until user configures sections)
   const planPctSum = distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0);
   const planBalanced = Math.round(planPctSum) === 100;
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
-  <SummaryCards />
+  <SummaryCards {fromStr} {toStr} />
+
+  {#if !hasData && !$txLoading}
+    <!-- Empty state CTA -->
+    <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/5 py-12 text-center">
+      <p class="text-base font-medium text-ink">No transactions imported yet</p>
+      <p class="text-sm text-muted">Import a CSV bank export to see real data here.</p>
+      <a
+        href="#import"
+        class="press mt-2 flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
+      >
+        <ArrowUpRight class="h-4 w-4" /> Import CSV
+      </a>
+    </div>
+  {/if}
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
     <!-- Main column -->
@@ -62,15 +97,27 @@
             <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
           </div>
         </div>
-        <NetOverTime data={filteredNet} currency={demoCurrency} locale={demoLocale} />
+        {#if netSeries.length === 0}
+          <div class="flex h-32 items-center justify-center text-sm text-muted">
+            {$txLoading ? 'Loading…' : 'No data for this period'}
+          </div>
+        {:else}
+          <NetOverTime data={netSeries} {currency} {locale} />
+        {/if}
       </Card>
 
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
           <h2 class="card-title">Spending by category</h2>
-          <span class="text-xs text-muted">June 2026</span>
+          <span class="text-xs text-muted">{fromStr.slice(0, 7)} – {toStr.slice(0, 7)}</span>
         </div>
-        <SpendingByCategory data={spendingByCategory} currency={demoCurrency} locale={demoLocale} />
+        {#if catSpend.length === 0}
+          <div class="flex h-24 items-center justify-center text-sm text-muted">
+            {$txLoading ? 'Loading…' : 'No categorized spending'}
+          </div>
+        {:else}
+          <SpendingByCategory data={catSpend} {currency} {locale} />
+        {/if}
       </Card>
     </div>
 
@@ -93,7 +140,7 @@
             {/if}
           </span>
         </div>
-        <DistributionView group={distribution} currency={demoCurrency} locale={demoLocale} />
+        <DistributionView group={distribution} {currency} {locale} />
       </Card>
 
       <Card>
@@ -101,7 +148,7 @@
           <h2 class="card-title">Goals</h2>
           <span class="text-xs text-muted">Targets</span>
         </div>
-        <TargetProgress items={targets} currency={demoCurrency} locale={demoLocale} />
+        <TargetProgress items={targets} {currency} {locale} />
       </Card>
 
       <Card>

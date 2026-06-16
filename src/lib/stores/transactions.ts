@@ -1,13 +1,13 @@
 /**
- * Transactions store: tracks how many rows are stored and owns the import-commit
- * path (dedup against existing fingerprints, encrypt the new ones in the worker,
- * persist). Decryption/listing for the table arrives in M3.
+ * Transactions store: commit pipeline (import), decrypted cache (loadAll),
+ * and on-demand rule application.
  */
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { cryptoWorker } from '$lib/workers/cryptoClient';
 import { transactionRepo } from '$lib/db/repos';
-import type { Transaction } from '$lib/types';
+import { applyRules } from '$lib/rules/engine';
+import type { AppConfig, Transaction } from '$lib/types';
 
 export interface CommitResult {
   added: number;
@@ -16,20 +16,55 @@ export interface CommitResult {
 
 function createTransactionsStore() {
   const count = writable<number>(0);
+  const all = writable<Transaction[]>([]);
+  const loading = writable<boolean>(false);
+  let loaded = false;
 
   async function refreshCount(): Promise<void> {
     count.set(await transactionRepo.count());
   }
 
+  /** Decrypt all stored transactions and cache them. Idempotent. */
+  async function loadAll(): Promise<Transaction[]> {
+    if (loaded) return get(all);
+    loading.set(true);
+    try {
+      const stored = await transactionRepo.allEncrypted();
+      if (stored.length === 0) {
+        all.set([]);
+        count.set(0);
+        loaded = true;
+        return [];
+      }
+      const blobs = stored.map((s) => s.blob);
+      const decrypted = await cryptoWorker.decryptMany<Transaction>(blobs);
+      // Sort descending by date so the table default order is newest-first.
+      decrypted.sort((a, b) => b.date.localeCompare(a.date));
+      all.set(decrypted);
+      count.set(decrypted.length);
+      loaded = true;
+      return decrypted;
+    } finally {
+      loading.set(false);
+    }
+  }
+
+  /** Invalidate the cache (e.g. after lock). */
+  function reset() {
+    loaded = false;
+    all.set([]);
+    count.set(0);
+  }
+
   /**
    * Persist built transactions idempotently: existing fingerprints are skipped,
-   * the remainder are encrypted in the worker and stored. Returns how many were
-   * added vs recognized as duplicates.
+   * fresh ones are rule-applied, encrypted in the worker, and stored.
    */
-  async function commit(txs: Transaction[]): Promise<CommitResult> {
-    const fingerprints = txs.map((t) => t.fingerprint);
+  async function commit(txs: Transaction[], cfg?: AppConfig | null): Promise<CommitResult> {
+    const withRules = cfg?.rules?.length ? applyRules(txs, cfg.rules) : txs;
+    const fingerprints = withRules.map((t) => t.fingerprint);
     const existing = await transactionRepo.existingFingerprints(fingerprints);
-    const fresh = txs.filter((t) => !existing.has(t.fingerprint));
+    const fresh = withRules.filter((t) => !existing.has(t.fingerprint));
 
     let added = 0;
     if (fresh.length) {
@@ -38,11 +73,68 @@ function createTransactionsStore() {
       const res = await transactionRepo.addEncrypted(rows);
       added = res.added;
     }
+
+    // Invalidate cache so next loadAll() re-decrypts.
+    loaded = false;
     await refreshCount();
     return { added, duplicates: txs.length - added };
   }
 
-  return { subscribe: count.subscribe, refreshCount, commit };
+  /**
+   * Re-apply rules to all stored transactions and persist the updated blobs.
+   * Returns the number of transactions that changed.
+   */
+  async function applyAndSave(cfg: AppConfig): Promise<number> {
+    loading.set(true);
+    try {
+      const stored = await transactionRepo.allEncrypted();
+      if (stored.length === 0) return 0;
+
+      const blobs = stored.map((s) => s.blob);
+      const decrypted = await cryptoWorker.decryptMany<Transaction>(blobs);
+      const updated = applyRules(decrypted, cfg.rules);
+
+      // Find which ones changed.
+      const changed: { stored: (typeof stored)[0]; tx: Transaction }[] = [];
+      for (let i = 0; i < updated.length; i++) {
+        const orig = decrypted[i];
+        const next = updated[i];
+        if (
+          orig.categoryId !== next.categoryId ||
+          orig.entity !== next.entity ||
+          JSON.stringify(orig.tagIds) !== JSON.stringify(next.tagIds)
+        ) {
+          changed.push({ stored: stored[i], tx: next });
+        }
+      }
+
+      if (changed.length) {
+        const newBlobs = await cryptoWorker.encryptMany(changed.map((c) => c.tx));
+        const rows = changed.map((c, i) => ({
+          ...c.stored,
+          blob: newBlobs[i]
+        }));
+        await transactionRepo.bulkUpdateBlobs(rows);
+        loaded = false;
+        await loadAll();
+      }
+
+      return changed.length;
+    } finally {
+      loading.set(false);
+    }
+  }
+
+  return {
+    subscribe: count.subscribe,
+    all: { subscribe: all.subscribe },
+    loading: { subscribe: loading.subscribe },
+    refreshCount,
+    loadAll,
+    reset,
+    commit,
+    applyAndSave
+  };
 }
 
 export const transactions = createTransactionsStore();
