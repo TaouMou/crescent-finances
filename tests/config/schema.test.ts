@@ -3,13 +3,20 @@ import { emptyConfig, parseConfig, safeParseConfig, SCHEMA_VERSION } from '../..
 import exampleConfig from '../../public/example.config.json';
 
 describe('config schema', () => {
-  it('emptyConfig is valid and ships zero sections/categories/accounts', () => {
+  it('emptyConfig is valid, seeds starter categories/rules, no sections/accounts', () => {
     const cfg = emptyConfig();
     expect(() => parseConfig(cfg)).not.toThrow();
     expect(cfg.sections).toHaveLength(0);
     expect(cfg.sectionGroups).toHaveLength(0);
-    expect(cfg.categories).toHaveLength(0);
     expect(cfg.accounts).toHaveLength(0);
+    // Ships a starter set so a fresh vault is immediately usable.
+    expect(cfg.categories.length).toBeGreaterThan(0);
+    expect(cfg.rules.length).toBeGreaterThan(0);
+    // Every starter rule points at a real starter category.
+    const catIds = new Set(cfg.categories.map((c) => c.id));
+    for (const r of cfg.rules) {
+      if (r.setCategoryId) expect(catIds.has(r.setCategoryId)).toBe(true);
+    }
     expect(cfg.schemaVersion).toBe(SCHEMA_VERSION);
   });
 

@@ -56,6 +56,13 @@ function createTransactionsStore() {
     count.set(0);
   }
 
+  /** Permanently delete every stored transaction (keeps vault + config). */
+  async function clearAll(): Promise<void> {
+    await transactionRepo.clear();
+    reset();
+    await refreshCount();
+  }
+
   /**
    * Persist built transactions idempotently: existing fingerprints are skipped,
    * fresh ones are rule-applied, encrypted in the worker, and stored.
@@ -148,6 +155,7 @@ function createTransactionsStore() {
     refreshCount,
     loadAll,
     reset,
+    clearAll,
     commit,
     applyAndSave,
     updateCategory
