@@ -9,6 +9,8 @@
   import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
   import RulesView from '$lib/components/rules/RulesView.svelte';
   import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
+  import PlanView from '$lib/components/plan/PlanView.svelte';
+  import SettingsView from '$lib/components/settings/SettingsView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -33,6 +35,7 @@
     transactions: 'Transactions',
     rules: 'Rules',
     monthly: 'Monthly',
+    plan: 'Plan',
     settings: 'Settings'
   };
   const title = $derived(titles[route] ?? 'Dashboard');
@@ -117,6 +120,10 @@
           <RulesView />
         {:else if route === 'monthly'}
           <MonthlyView />
+        {:else if route === 'plan'}
+          <PlanView />
+        {:else if route === 'settings'}
+          <SettingsView />
         {:else}
           <Dashboard />
         {/if}
