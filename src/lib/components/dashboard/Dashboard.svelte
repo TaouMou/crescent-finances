@@ -39,6 +39,12 @@
   const fromDate = $derived(new Date(`${fromStr}T00:00:00`));
   const toDate = $derived(new Date(`${toStr}T23:59:59`));
 
+  // Epoch-second bounds (UTC, matching the chart's point timestamps) so the
+  // Net-over-time chart always spans exactly the picked window — not just the
+  // extent of the available data points.
+  const xMin = $derived(Math.floor(new Date(`${fromStr}T00:00:00Z`).getTime() / 1000));
+  const xMax = $derived(Math.floor(new Date(`${toStr}T23:59:59Z`).getTime() / 1000));
+
   const spanLabel = $derived.by(() => {
     const { months, days } = monthsDaysBetween(fromDate, toDate);
     const span = formatSpan(months, days);
@@ -102,7 +108,7 @@
             {$txLoading ? 'Loading…' : 'No data for this period'}
           </div>
         {:else}
-          <NetOverTime data={netSeries} {currency} {locale} />
+          <NetOverTime data={netSeries} {currency} {locale} {xMin} {xMax} />
         {/if}
       </Card>
 

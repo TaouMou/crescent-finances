@@ -13,8 +13,18 @@
     data,
     currency = 'EUR',
     locale = 'en-US',
-    height = 220
-  }: { data: NetPoint[]; currency?: string; locale?: string; height?: number } = $props();
+    height = 220,
+    xMin,
+    xMax
+  }: {
+    data: NetPoint[];
+    currency?: string;
+    locale?: string;
+    height?: number;
+    // Epoch-second bounds pinning the x-axis to the selected timeframe.
+    xMin?: number;
+    xMax?: number;
+  } = $props();
 
   let el: HTMLDivElement;
   let UPlot: UPlotCtor | null = null;
@@ -49,7 +59,17 @@
       // Hover readout only — no drag-to-zoom (timeframe is set via selectors).
       cursor: { points: { size: 6 }, y: false, drag: { x: false, y: false, setScale: false } },
       legend: { show: false },
-      scales: { x: { time: true } },
+      scales: {
+        // Pin the x-axis to the picked window so the chart spans exactly the
+        // selected dates regardless of where the data points fall.
+        x: {
+          time: true,
+          range:
+            xMin != null && xMax != null
+              ? () => [xMin, xMax] as [number, number]
+              : undefined
+        }
+      },
       axes: [
         {
           stroke: ink,
@@ -102,10 +122,16 @@
     untrack(() => render());
   });
 
-  // Update data (and rescale) when the selected timeframe changes.
+  // Update data (and re-pin the x-axis) when the selected timeframe changes.
   $effect(() => {
     const d = dataset();
-    untrack(() => chart?.setData(d));
+    const lo = xMin;
+    const hi = xMax;
+    untrack(() => {
+      if (!chart) return;
+      chart.setData(d); // y auto-rescales to the new data
+      if (lo != null && hi != null) chart.setScale('x', { min: lo, max: hi });
+    });
   });
 
   onMount(() => {
