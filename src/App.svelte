@@ -97,7 +97,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar {title} period="June 2026" onMenu={() => (mobileOpen = true)} />
       <main
-        class={`dashboard-surface flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
+        class={`flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
         {#if route === 'import'}
