@@ -9,9 +9,10 @@
   import { transactions } from '$lib/stores/transactions';
   import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { evaluatePlan } from '$lib/sections/engine';
+  import { nextOccurrence } from '$lib/sections/schedule';
   import { safeParseConfig } from '$lib/config/schema';
   import { demoCurrency, demoLocale } from '$lib/seed/dashboard';
-  import type { Section, SectionCalc, SectionGroup, SectionGroupKind, TransactionFilter } from '$lib/types';
+  import type { Schedule, Section, SectionCalc, SectionGroup, SectionGroupKind, TransactionFilter } from '$lib/types';
 
   const txAll = transactions.all;
 
@@ -88,6 +89,12 @@
     plannedMajor: number;
     // accountBalance / target-link field
     assetPoolId: string;
+    // schedule fields
+    scheduleKind: 'none' | 'interval' | 'anniversary';
+    intervalEveryDays: number;
+    intervalAnchor: string;
+    annivMonth: number;
+    annivDay: number;
   }
   let editingSection = $state<SectionDraft | null>(null);
 
@@ -105,7 +112,12 @@
     filterTagIds: [],
     filterQuery: '',
     plannedMajor: 0,
-    assetPoolId: ''
+    assetPoolId: '',
+    scheduleKind: 'none',
+    intervalEveryDays: 30,
+    intervalAnchor: '',
+    annivMonth: 1,
+    annivDay: 1
   });
 
   function newSection(groupId: string) {
@@ -143,7 +155,28 @@
       d.plannedMajor = (s.calc.planned ?? 0) / 100;
     }
     if (s.calc.type === 'accountBalance') d.assetPoolId = s.calc.assetPoolId;
+    if (s.schedule) {
+      d.scheduleKind = s.schedule.kind;
+      if (s.schedule.interval) {
+        d.intervalEveryDays = s.schedule.interval.everyDays;
+        d.intervalAnchor = s.schedule.interval.anchor;
+      }
+      if (s.schedule.anniversary) {
+        d.annivMonth = s.schedule.anniversary.month;
+        d.annivDay = s.schedule.anniversary.day;
+      }
+    }
     editingSection = d;
+  }
+
+  function draftToSchedule(d: SectionDraft): Schedule | undefined {
+    if (d.scheduleKind === 'interval' && d.intervalAnchor) {
+      return { kind: 'interval', interval: { everyDays: Number(d.intervalEveryDays) || 1, anchor: d.intervalAnchor } };
+    }
+    if (d.scheduleKind === 'anniversary') {
+      return { kind: 'anniversary', anniversary: { calendar: 'gregorian', month: Number(d.annivMonth) || 1, day: Number(d.annivDay) || 1 } };
+    }
+    return undefined;
   }
 
   function draftToCalc(d: SectionDraft): SectionCalc {
@@ -179,10 +212,11 @@
     if (!editingSection || !$config || !editingSection.name.trim()) return;
     const draft = editingSection;
     const calc = draftToCalc(draft);
+    const schedule = draftToSchedule(draft);
     let sections = [...$config.sections];
     if (draft.id) {
       sections = sections.map((s) =>
-        s.id === draft.id ? { ...s, name: draft.name.trim(), color: draft.color, groupId: draft.groupId, calc } : s
+        s.id === draft.id ? { ...s, name: draft.name.trim(), color: draft.color, groupId: draft.groupId, calc, schedule } : s
       );
     } else {
       const order = sections.filter((s) => s.groupId === draft.groupId).length;
@@ -192,7 +226,8 @@
         color: draft.color,
         groupId: draft.groupId,
         order,
-        calc
+        calc,
+        schedule
       });
     }
     await persist({ sections });
@@ -239,6 +274,19 @@
       case 'accountBalance':
         return 'Account / pool balance';
     }
+  }
+
+  function scheduleLabel(s: Section): string | null {
+    if (!s.schedule) return null;
+    const next = nextOccurrence(s.schedule);
+    const nextStr = next
+      ? new Date(`${next}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+      : null;
+    const base =
+      s.schedule.kind === 'interval' && s.schedule.interval
+        ? `Every ${s.schedule.interval.everyDays} days`
+        : 'Yearly';
+    return nextStr ? `${base} · next ${nextStr}` : base;
   }
 
   onMount(() => {
@@ -437,6 +485,38 @@
             </div>
           </details>
         {/if}
+
+        <!-- Schedule (optional, applies to any section) -->
+        <label class="flex flex-col gap-1 sm:col-span-2">
+          <span class="text-xs text-muted">Schedule (optional)</span>
+          <select
+            bind:value={editingSection.scheduleKind}
+            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+          >
+            <option value="none">None</option>
+            <option value="interval">Every N days</option>
+            <option value="anniversary">Yearly (month / day)</option>
+          </select>
+        </label>
+        {#if editingSection.scheduleKind === 'interval'}
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Every (days)</span>
+            <input type="number" min="1" bind:value={editingSection.intervalEveryDays} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Starting from</span>
+            <DateField bind:value={editingSection.intervalAnchor} clearable label="Anchor date" />
+          </label>
+        {:else if editingSection.scheduleKind === 'anniversary'}
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Month (1–12)</span>
+            <input type="number" min="1" max="12" bind:value={editingSection.annivMonth} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-muted">Day (1–31)</span>
+            <input type="number" min="1" max="31" bind:value={editingSection.annivDay} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+          </label>
+        {/if}
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
         <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (editingSection = null)}>
@@ -507,7 +587,9 @@
               <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${s.color}`}></span>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm text-ink">{s.name}</p>
-                <p class="truncate text-xs text-muted">{calcLabel(s)}</p>
+                <p class="truncate text-xs text-muted">
+                  {calcLabel(s)}{#if scheduleLabel(s)} · {scheduleLabel(s)}{/if}
+                </p>
               </div>
               <div class="flex shrink-0 items-center gap-1">
                 <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => editSection(s)} title="Edit section">
