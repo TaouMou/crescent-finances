@@ -97,7 +97,7 @@
   <!-- Anomaly thresholds -->
   <Card>
     <h2 class="card-title mb-1">Anomaly detection</h2>
-    <p class="mb-4 text-xs text-muted">Thresholds are saved now; automatic detection ships in a later update.</p>
+    <p class="mb-4 text-xs text-muted">Flags categories whose spending this month is a robust outlier above their recent baseline. Shown on the dashboard Anomalies card.</p>
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="flex flex-col gap-1">
         <span class="text-xs text-muted">Baseline months</span>
