@@ -59,16 +59,13 @@
           space: 64,
           values: (_u: UPlotInstance, splits: number[]) => {
             if (splits.length === 0) return [];
-            const first = new Date(splits[0] * 1000);
-            const last = new Date(splits[splits.length - 1] * 1000);
-            const singleMonth =
-              first.getFullYear() === last.getFullYear() &&
-              first.getMonth() === last.getMonth();
+            const rangeS = splits[splits.length - 1] - splits[0];
+            let opts: Intl.DateTimeFormatOptions;
+            if (rangeS < 86400 * 60)       opts = { day: 'numeric', month: 'short' };
+            else if (rangeS < 86400 * 730) opts = { month: 'short' };
+            else                           opts = { year: 'numeric' };
             return splits.map((s: number) =>
-              new Date(s * 1000).toLocaleDateString(
-                locale,
-                singleMonth ? { day: 'numeric' } : { month: 'short' }
-              )
+              new Date(s * 1000).toLocaleDateString(locale, opts)
             );
           }
         },
