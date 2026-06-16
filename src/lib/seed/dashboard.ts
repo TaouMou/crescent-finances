@@ -116,8 +116,8 @@ export const targets: TargetSection[] = [
 
 import type { MonthlyNet } from '$lib/aggregations';
 
-const _incomes =   [320_000, 330_000, 315_000, 400_000, 325_000, 340_000, 450_000, 335_000, 380_000, 320_000, 410_000, 412_000];
-const _spendings = [237_700, 238_600, 250_200, 281_800, 251_500, 243_900, 307_100, 246_400, 270_600, 248_800, 279_000, 268_450];
+const _incomes =   [298_000, 320_000, 330_000, 315_000, 400_000, 325_000, 340_000, 450_000, 335_000, 380_000, 320_000, 410_000, 412_000];
+const _spendings = [224_300, 237_700, 238_600, 250_200, 281_800, 251_500, 243_900, 307_100, 246_400, 270_600, 248_800, 279_000, 268_450];
 
 export const demoMonthly: MonthlyNet[] = (() => {
   let cumulative = 980_000;
@@ -125,8 +125,8 @@ export const demoMonthly: MonthlyNet[] = (() => {
     const spending = _spendings[i];
     const net = income - spending;
     cumulative += net;
-    const year = 2025 + Math.floor((6 + i) / 12);
-    const month = String(((6 + i) % 12) + 1).padStart(2, '0');
+    const year = 2025 + Math.floor((5 + i) / 12);
+    const month = String(((5 + i) % 12) + 1).padStart(2, '0');
     return { bucket: `${year}-${month}`, income, spending, net, cumulative };
   });
 })().reverse();
