@@ -64,9 +64,9 @@
         { label: 'Total spending', value: totals.spending, tone: 'text-expense', signed: false },
         { label: 'Net',            value: totals.net,      tone: totals.net >= 0 ? 'text-income' : 'text-expense', signed: true }
       ] as s (s.label)}
-        <div class="px-5 py-4">
-          <p class="text-xs text-muted">{s.label}</p>
-          <p class={cn('tnum mt-2 text-lg font-semibold', s.tone)}>
+        <div class="min-w-0 px-3 py-4 md:px-5">
+          <p class="truncate text-xs text-muted">{s.label}</p>
+          <p class={cn('tnum mt-2 truncate text-sm font-semibold md:text-lg', s.tone)}>
             {fmt(s.value, s.signed)}
           </p>
         </div>

@@ -2,7 +2,7 @@
   import {
     SquaresFour,
     ArrowsLeftRight,
-    ChartPieSlice,
+    CalendarBlank,
     UploadSimple,
     GearSix,
     CaretRight,
@@ -12,7 +12,7 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { slide, fade } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { cn } from '$lib/utils/cn';
@@ -29,18 +29,11 @@
     onClose?: () => void;
   } = $props();
 
-  // Notion-style nested navigation. "Plan" expands into user-defined section groups.
   const nav = [
     { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
     { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight },
+    { id: 'monthly', label: 'Breakdown', icon: CalendarBlank },
     { id: 'rules', label: 'Rules', icon: Funnel }
-  ];
-
-  let planOpen = $state(true);
-  // Section groups are user-created; shown here from a demo config.
-  const planGroups = [
-    { id: 'monthly', label: 'Breakdown' },
-    { id: 'g2', label: 'Goals' }
   ];
 
   const footerNav = [
@@ -89,36 +82,6 @@
       </a>
     {/each}
 
-    <!-- Plan: expands to user-defined section groups -->
-    <button
-      class="flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-      onclick={() => (planOpen = !planOpen)}
-      title="Plan"
-    >
-      <ChartPieSlice class="h-[18px] w-[18px] shrink-0" />
-      {#if !collapsed}
-        <span class="truncate" transition:fade={{ duration: 150 }}>Plan</span>
-        <span transition:fade={{ duration: 150 }}><CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} /></span>
-      {/if}
-    </button>
-    {#if planOpen && !collapsed}
-      <div class="space-y-0.5 pb-1" transition:slide={{ duration: 180 }}>
-        {#each planGroups as g (g.id)}
-          <a
-            href={`#${g.id}`}
-            class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            onclick={() => onClose?.()}
-          >
-            <span class="truncate">{g.label}</span>
-          </a>
-        {/each}
-        <button
-          class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        >
-          <span class="truncate">+ New group</span>
-        </button>
-      </div>
-    {/if}
   </nav>
 
   <!-- Footer actions: same row layout as nav, so collapsing only hides labels
