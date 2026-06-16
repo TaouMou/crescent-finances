@@ -38,6 +38,10 @@
     return formatMoney(n, { currency, locale, signed });
   }
 
+  function fmtWhole(n: number, signed = false) {
+    return formatMoney(n, { currency, locale, signed, whole: true });
+  }
+
   function monthLabel(bucket: string) {
     const [y, m] = bucket.split('-');
     return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(locale, {
@@ -67,7 +71,7 @@
         <div class="min-w-0 px-3 py-4 md:px-5">
           <p class="truncate text-xs text-muted">{s.label}</p>
           <p class={cn('tnum mt-2 truncate text-sm font-semibold md:text-lg', s.tone)}>
-            {fmt(s.value, s.signed)}
+            {fmtWhole(s.value, s.signed)}
           </p>
         </div>
       {/each}
