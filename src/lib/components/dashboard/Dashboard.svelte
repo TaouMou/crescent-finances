@@ -8,11 +8,12 @@
   import NetOverTime from '$lib/components/charts/NetOverTime.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
-  import { anomalies, distribution, targets, demoCurrency, demoLocale } from '$lib/seed/dashboard';
+  import { anomalies, distribution as demoDistribution, targets as demoTargets, demoCurrency, demoLocale } from '$lib/seed/dashboard';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
   import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
+  import { evaluatePlan } from '$lib/sections/engine';
 
   // ----- data -----
   const txAll = transactions.all;
@@ -62,9 +63,19 @@
     return breakdown.map((b) => ({ name: b.name, color: b.color, amount: b.amount }));
   });
 
-  // Distribution status (seeded until user configures sections)
-  const planPctSum = distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0);
-  const planBalanced = Math.round(planPctSum) === 100;
+  // Real plan from config when the user has configured sections; demo otherwise.
+  const realPlan = $derived(
+    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll)
+  );
+  const realDist = $derived(realPlan.find((g) => g.distribution.sections.length > 0)?.distribution);
+  const realTargets = $derived(realPlan.flatMap((g) => g.targets));
+
+  const distribution = $derived(realDist ?? demoDistribution);
+  const targets = $derived(realTargets.length > 0 ? realTargets : demoTargets);
+
+  // Distribution status badge
+  const planPctSum = $derived(distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0));
+  const planBalanced = $derived(Math.round(planPctSum) === 100);
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">

@@ -48,6 +48,7 @@ Transactions are stored encrypted: only `id`, `fingerprint`, `dateBucket` are pl
 | `vault-machine.ts` | Pure `(state, event) → state` — unit-tested |
 | `transactions.ts` | Import-commit pipeline + decrypted transaction cache (`loadAll`, `applyAndSave`) |
 | `config.ts` | Config load/save |
+| `plan-ui.ts` | Cross-component flag so the sidebar "+ New group" opens PlanView's editor |
 | `theme.ts` | Light/dark toggle |
 
 ### `src/lib/config/`
@@ -62,6 +63,13 @@ Transactions are stored encrypted: only `id`, `fingerprint`, `dateBucket` are pl
 | `engine.ts` | Pure rule-matching and application — `applyRules(txs, rules)` |
 
 Rules match on `label` or `entity` fields by keyword or regex, sorted by priority (lower = first). Actions: `setCategoryId`, `setEntity`, `addTagIds`. Applied on CSV import (in `transactions.commit`) and on demand via `transactions.applyAndSave`.
+
+### `src/lib/sections/`
+| File | Purpose |
+|------|---------|
+| `engine.ts` | Pure section evaluator — `evaluateDistribution`, `evaluateTargets`, `evaluatePlan`. Turns config `sectionGroups`/`sections` into the `DistributionView`/`TargetProgress` shapes. |
+
+Group source = period income (`summarize`); planned from each section's calc (`percentage`/`fixed`/`remainder`/`target`), `remainder` absorbs the leftover. `actual` mirrors `planned` and target `current` is 0 until transaction-linked calcs land (M4 Slice 2).
 
 ### `src/lib/aggregations.ts`
 Pure functions over decrypted `Transaction[]`:
@@ -84,6 +92,8 @@ Demo data used when no real transactions are loaded (bypass mode or empty vault)
 | `transactions/TransactionsView.svelte` | Virtualized, sortable, filterable table (mobile: 2-col; desktop: 4-col) |
 | `rules/RulesView.svelte` | Rule CRUD UI with enable/disable toggle and "Apply now" |
 | `monthly/MonthlyView.svelte` | Monthly breakdown — income/spending/net per month with mini bar chart |
+| `plan/PlanView.svelte` | Section-group/section CRUD; renders real distribution + goals (`#plan`) |
+| `settings/SettingsView.svelte` | Currency/locale, anomaly thresholds, config-template export/import (`#settings`) |
 | `import/ImportView.svelte` | Multi-step CSV import |
 | `ui/CountUp.svelte` | Animated number count-up (rAF + ease-out cubic) |
 
@@ -106,7 +116,7 @@ Bokeh radial gradients are **disabled in light mode** (`--bokeh-a1: 0; --bokeh-a
 - Pure logic (state machines, rule engine, aggregations, parsers) lives in plain `.ts` files, no Svelte globals, so vitest can test them without DOM or worker setup.
 - Svelte 5 runes (`$state`, `$derived`, `$effect`, `$props`) throughout; no Svelte 4 options API.
 - Config is financial-data-free (no balances, no transactions) and is stored in plaintext — shareable as a template.
-- Hash-based routing: `#dashboard`, `#transactions`, `#monthly`, `#import`, `#rules`, `#settings`. Falls back to `#dashboard`.
+- Hash-based routing: `#dashboard`, `#transactions`, `#monthly`, `#plan`, `#import`, `#rules`, `#settings`. Falls back to `#dashboard`.
 
 ## Dev / verify workflow
 
@@ -134,9 +144,19 @@ npm run build && npx vite preview
 - **`feature/xxx`** — branch off `dev`, PR back to `dev` when done.
 - Deploy (GitHub Pages) triggered manually via `workflow_dispatch` on `deploy-pages.yml`.
 
+### Git/GitHub conventions (for Claude)
+
+- **One concern per PR.** Bugs, refactors, and polish go in separate PRs, even within a UI pass. Bundle only trivial fixes in code already being touched, as their own commit.
+- **Branch naming:** `feature/<short-desc>`, `fix/<short-desc>`, `polish/<short-desc>`, `refactor/<short-desc>`. Kebab-case. Always cut from fresh `dev`.
+- **Commits:** Conventional Commits — `feat:`, `fix:`, `refactor:`, `style:`, `chore:`. Subject ≤ 72 chars, imperative mood, describes the *why* when non-obvious.
+- **PRs target `dev`**, never `main` directly. Rebase later branches on `dev` as earlier ones merge.
+- **Verify before pushing:** `npm run check && npm test` (and `npm run build` if build/output is touched).
+- **UI changes:** edit design tokens, not hard-coded hex; verify light + dark; attach before/after screenshots (`scripts/shot.mjs`) to the PR.
+- **Never** push to `main`/`dev` directly or open a PR unless explicitly asked.
+
 ## Status
 
 - **M1** — Encrypted vault foundation: crypto worker, PBKDF2/AES-GCM, Dexie schema, LockScreen, config schema, backup format. ✅
 - **M2** — CSV import: import worker, fingerprinting/dedup, ImportView (3-step UI), import profiles, idle auto-lock. ✅
 - **M3** — Virtualized transactions table, rule engine, real dashboard aggregations, count-up animations, View Transitions, hash router, monthly breakdown view, warm cream palette. ✅
-- **M4** — TBD
+- **M4** — Planning & Goals (in progress): config-backed section groups/sections, pure section-evaluation engine (`src/lib/sections/engine.ts`), real Plan view (`#plan`) with group/section CRUD, minimal Settings view (`#settings`), sidebar groups from live config, dashboard wired to real distribution/targets. Deferred: anomaly-detection engine, asset pools, schedules, `filterSum`/`accountBalance` calcs. See `docs/m4-plan.md`.
