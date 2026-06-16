@@ -109,7 +109,7 @@
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
           <h2 class="card-title">Spending by category</h2>
-          <span class="text-xs text-muted">{fromStr.slice(0, 7)} – {toStr.slice(0, 7)}</span>
+          <span class="whitespace-nowrap text-xs text-muted">{fromStr.slice(0, 7)} – {toStr.slice(0, 7)}</span>
         </div>
         {#if catSpend.length === 0}
           <div class="flex h-24 items-center justify-center text-sm text-muted">
