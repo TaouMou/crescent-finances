@@ -42,10 +42,9 @@
        page background — same tone as input fields / date pickers. */
     background-color: rgb(var(--c-surface));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
-    /* Perspective light touches: darker on light cards (soft shadow depth). */
-    --bokeh-color: var(--c-ink);
-    --bokeh-a1: 0.05;
-    --bokeh-a2: 0.03;
+    /* Bokeh off in light mode — shadow alone provides depth on white cards. */
+    --bokeh-a1: 0;
+    --bokeh-a2: 0;
   }
   .dark .card {
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
