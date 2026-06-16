@@ -12,7 +12,7 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { slide } from 'svelte/transition';
+  import { slide, fade } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { cn } from '$lib/utils/cn';
@@ -85,7 +85,7 @@
         onclick={() => onClose?.()}
       >
         <item.icon class="h-[18px] w-[18px] shrink-0" />
-        {#if !collapsed}<span class="truncate">{item.label}</span>{/if}
+        {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{item.label}</span>{/if}
       </a>
     {/each}
 
@@ -97,8 +97,8 @@
     >
       <ChartPieSlice class="h-[18px] w-[18px] shrink-0" />
       {#if !collapsed}
-        <span class="truncate">Plan</span>
-        <CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} />
+        <span class="truncate" transition:fade={{ duration: 150 }}>Plan</span>
+        <span transition:fade={{ duration: 150 }}><CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} /></span>
       {/if}
     </button>
     {#if planOpen && !collapsed}
@@ -135,7 +135,7 @@
         onclick={() => onClose?.()}
       >
         <item.icon class="h-[18px] w-[18px] shrink-0" />
-        {#if !collapsed}<span class="truncate">{item.label}</span>{/if}
+        {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{item.label}</span>{/if}
       </a>
     {/each}
     <button
@@ -149,7 +149,7 @@
       {:else}
         <Moon class="h-[18px] w-[18px] shrink-0" />
       {/if}
-      {#if !collapsed}<span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
+      {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
     </button>
     <button
       class="press flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
@@ -158,7 +158,7 @@
       aria-label="Lock"
     >
       <Lock class="h-[18px] w-[18px] shrink-0" />
-      {#if !collapsed}<span class="truncate">Lock</span>{/if}
+      {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>Lock</span>{/if}
     </button>
   </div>
 

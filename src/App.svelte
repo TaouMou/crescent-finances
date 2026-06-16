@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
@@ -86,9 +87,17 @@
 
     <!-- Mobile drawer (full-width overlay) -->
     {#if mobileOpen}
-      <div
-        class="fixed inset-0 z-40 h-full w-full overscroll-contain md:hidden"
+      <!-- Backdrop -->
+      <button
+        class="fixed inset-0 z-40 w-full bg-ink/40 md:hidden"
         transition:fade={{ duration: 200 }}
+        onclick={() => (mobileOpen = false)}
+        aria-label="Close menu"
+      ></button>
+      <!-- Drawer -->
+      <div
+        class="fixed inset-y-0 left-0 z-50 w-[280px] overscroll-contain md:hidden"
+        transition:fly={{ x: -280, duration: 250, easing: cubicOut }}
       >
         <Sidebar active={route} fullWidth onClose={() => (mobileOpen = false)} />
       </div>
