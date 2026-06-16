@@ -38,9 +38,9 @@
 @layer components {
   .card {
     @apply rounded-card;
-    /* Cards use surface (pure white) so they lift clearly above the off-white
-       page background — same tone as input fields / date pickers. */
-    background-color: rgb(var(--c-surface));
+    /* Cards share the sidebar/paper tone as their dominant colour; depth comes
+       from the shadow + the per-card perspective touches (Card.svelte). */
+    background-color: rgb(var(--c-paper));
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
     /* Perspective light touches: darker on light cards (soft shadow depth). */
     --bokeh-color: var(--c-ink);
@@ -49,6 +49,7 @@
   }
   .dark .card {
     box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.06);
+    /* Lighter on dark cards (soft highlight). */
     --bokeh-color: 255 255 255;
     --bokeh-a1: 0.07;
     --bokeh-a2: 0.04;

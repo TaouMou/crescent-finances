@@ -154,7 +154,7 @@
     errorMsg = null;
     try {
       // $state proxies can't be structured-cloned to the worker — snapshot first.
-      result = await transactions.commit($state.snapshot(preview.transactions), $config);
+      result = await transactions.commit($state.snapshot(preview.transactions));
       if (saveProfile && newProfileName.trim() && parsed && $config) {
         const profile: ImportProfile = {
           id: crypto.randomUUID(),
