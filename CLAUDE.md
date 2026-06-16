@@ -149,7 +149,7 @@ npm run build && npx vite preview
 - **One concern per PR.** Bugs, refactors, and polish go in separate PRs, even within a UI pass. Bundle only trivial fixes in code already being touched, as their own commit.
 - **Branch naming:** `feature/<short-desc>`, `fix/<short-desc>`, `polish/<short-desc>`, `refactor/<short-desc>`. Kebab-case. Always cut from fresh `dev`.
 - **Commits:** Conventional Commits — `feat:`, `fix:`, `refactor:`, `style:`, `chore:`. Subject ≤ 72 chars, imperative mood, describes the *why* when non-obvious.
-- **PRs target `dev`**, never `main` directly. Rebase later branches on `dev` as earlier ones merge.
+- **PRs target `dev`**, never `main` directly. Always branch from `origin/dev` (run `git fetch origin` first), and rebase on `origin/dev` before pushing (`git fetch origin && git rebase origin/dev`) so every PR is based on the latest integration state.
 - **Verify before pushing:** `npm run check && npm test` (and `npm run build` if build/output is touched).
 - **UI changes:** edit design tokens, not hard-coded hex; verify light + dark; attach before/after screenshots (`scripts/shot.mjs`) to the PR.
 - **Never** push to `main`/`dev` directly or open a PR unless explicitly asked.
