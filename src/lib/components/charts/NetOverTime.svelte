@@ -57,10 +57,20 @@
           ticks: { show: false },
           font: '12px Inter Variable, Inter, sans-serif',
           space: 64,
-          values: (_u: UPlotInstance, splits: number[]) =>
-            splits.map((s: number) =>
-              new Date(s * 1000).toLocaleDateString(locale, { month: 'short' })
-            )
+          values: (_u: UPlotInstance, splits: number[]) => {
+            if (splits.length === 0) return [];
+            const first = new Date(splits[0] * 1000);
+            const last = new Date(splits[splits.length - 1] * 1000);
+            const singleMonth =
+              first.getFullYear() === last.getFullYear() &&
+              first.getMonth() === last.getMonth();
+            return splits.map((s: number) =>
+              new Date(s * 1000).toLocaleDateString(
+                locale,
+                singleMonth ? { day: 'numeric' } : { month: 'short' }
+              )
+            );
+          }
         },
         {
           stroke: ink,
