@@ -85,6 +85,7 @@
   );
 
   const categories = $derived($config?.categories ?? []);
+  const tags = $derived($config?.tags ?? []);
 
   function fieldLabel(f: RuleMatch['field']) {
     return f === 'label' ? 'Description' : 'Entity';
@@ -201,6 +202,31 @@
             class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
+
+        <!-- Add tags -->
+        {#if tags.length > 0}
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <span class="text-xs text-muted">Add tags</span>
+            <div class="flex flex-wrap gap-x-5 gap-y-2 rounded-control border border-hairline bg-surface px-3 py-2.5">
+              {#each tags as tag (tag.id)}
+                <label class="flex cursor-pointer items-center gap-1.5 text-sm text-ink select-none">
+                  <input
+                    type="checkbox"
+                    checked={editing.addTagIds?.includes(tag.id) ?? false}
+                    onchange={(e) => {
+                      if (!editing) return;
+                      const ids = new Set(editing.addTagIds ?? []);
+                      if (e.currentTarget.checked) ids.add(tag.id); else ids.delete(tag.id);
+                      editing.addTagIds = [...ids];
+                    }}
+                  />
+                  <span class="h-2 w-2 shrink-0 rounded-full" style={`background:${tag.color}`}></span>
+                  {tag.name}
+                </label>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Case sensitive -->
@@ -284,7 +310,10 @@
               {/if}
               {#if rule.addTagIds?.length}
                 {#if rule.setCategoryId || rule.setEntity} · {/if}
-                Add tags ({rule.addTagIds.length})
+                {#each rule.addTagIds as tid, i (tid)}
+                  {@const tag = tags.find((t) => t.id === tid)}
+                  {#if tag}{#if i > 0}, {/if}<span class="inline-flex items-center gap-1"><span class="inline-block h-1.5 w-1.5 rounded-full" style={`background:${tag.color}`}></span>{tag.name}</span>{/if}
+                {/each}
               {/if}
               {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
                 (no actions)
