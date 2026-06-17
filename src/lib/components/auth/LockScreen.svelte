@@ -46,9 +46,13 @@
 </script>
 
 <div class="lock-surface relative flex min-h-screen w-screen items-center justify-center overflow-hidden p-6">
-  <!-- Atmospheric glow: one large soft accent wash + a fainter neutral bloom. -->
+  <!-- Atmospheric bokeh: large washes + scattered orbs in accent/income hues. -->
   <div class="glow glow-accent" aria-hidden="true"></div>
   <div class="glow glow-soft" aria-hidden="true"></div>
+  <div class="glow glow-income-bl" aria-hidden="true"></div>
+  <div class="glow glow-accent-tl" aria-hidden="true"></div>
+  <div class="glow glow-income-mid" aria-hidden="true"></div>
+  <div class="glow glow-accent-br" aria-hidden="true"></div>
 
   <div class="relative w-full max-w-sm">
     <div class="mb-8 flex flex-col items-center text-center">
@@ -170,6 +174,7 @@
     height: 42vmax;
     width: 42vmax;
     background: radial-gradient(circle, rgb(var(--c-accent) / 0.18), transparent 70%);
+    animation: float-a 18s ease-in-out infinite;
   }
   .glow-soft {
     bottom: -15%;
@@ -180,6 +185,56 @@
   }
   :global(.dark) .glow-soft {
     background: radial-gradient(circle, rgb(255 255 255 / 0.05), transparent 70%);
+  }
+
+  /* Extra bokeh orbs — accent (teal) + income (green) */
+  .glow-income-bl {
+    bottom: -5%;
+    left: 15%;
+    height: 30vmax;
+    width: 30vmax;
+    background: radial-gradient(circle, rgb(var(--c-income) / 0.14), transparent 68%);
+    animation: float-b 22s ease-in-out infinite;
+  }
+  .glow-accent-tl {
+    top: 5%;
+    left: -8%;
+    height: 28vmax;
+    width: 28vmax;
+    background: radial-gradient(circle, rgb(var(--c-accent) / 0.12), transparent 65%);
+    animation: float-c 26s ease-in-out infinite;
+  }
+  .glow-income-mid {
+    top: 40%;
+    right: 5%;
+    height: 22vmax;
+    width: 22vmax;
+    background: radial-gradient(circle, rgb(var(--c-income) / 0.10), transparent 60%);
+    animation: float-a 20s ease-in-out infinite reverse;
+  }
+  .glow-accent-br {
+    bottom: 10%;
+    right: -8%;
+    height: 26vmax;
+    width: 26vmax;
+    background: radial-gradient(circle, rgb(var(--c-accent) / 0.13), transparent 65%);
+    animation: float-b 24s ease-in-out infinite reverse;
+  }
+
+  @keyframes float-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(-2%, 3%) scale(1.04); }
+    66%       { transform: translate(3%, -2%) scale(0.97); }
+  }
+  @keyframes float-b {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    40%       { transform: translate(3%, -4%) scale(1.05); }
+    70%       { transform: translate(-2%, 2%) scale(0.96); }
+  }
+  @keyframes float-c {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    30%       { transform: translate(4%, 2%) scale(0.98); }
+    60%       { transform: translate(-3%, -3%) scale(1.03); }
   }
 
   .field-pill {
