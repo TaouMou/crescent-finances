@@ -152,8 +152,10 @@
       numberFormat: { decimal, thousands },
       accountId: defaultAccountId,
       source: 'csv-import',
-      categoryByName,
-      labelCleanup
+      // Snapshot the proxied state/derived values: a $state proxy can't be
+      // structured-cloned across the worker boundary.
+      categoryByName: $state.snapshot(categoryByName),
+      labelCleanup: $state.snapshot(labelCleanup)
     });
     await computeSuggestions();
   }
