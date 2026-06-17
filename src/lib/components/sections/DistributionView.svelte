@@ -74,12 +74,12 @@
         <!-- Bullet: track · actual fill (capped at plan) · overflow cap · planned tick -->
         <div class="relative h-2.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
           <div
-            class="absolute inset-y-0 left-0 rounded-full"
+            class={`absolute inset-y-0 left-0 rounded-l-full ${m.overflow ? '' : 'rounded-r-full'}`}
             style={`width:${w(Math.min(s.actual, s.planned || s.actual))};background:${s.color};transition:width var(--dur-slow) var(--ease-out)`}
           ></div>
           {#if m.overflow}
             <div
-              class="absolute inset-y-0"
+              class="absolute inset-y-0 rounded-r-full"
               style={`left:${w(s.planned)};width:${w(s.actual - s.planned)};background:${m.overflow}`}
             ></div>
           {/if}
