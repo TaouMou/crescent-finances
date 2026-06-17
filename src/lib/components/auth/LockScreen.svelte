@@ -227,19 +227,62 @@
     animation: float-b 24s ease-in-out infinite reverse;
   }
 
-  /* On phones the orbs are vmax-sized and anchored to the corners, so much of
-     each sits off-screen — boost the alpha (and tighten the blur) so the wash
-     that remains on-screen actually reads. */
+  /* On phones, vmax sizing makes the orbs as wide as the screen is *tall*, so
+     they sprawl across the centre and wash out the icon/title/inputs. Re-size
+     them in vw (relative to the narrow width) and pin each one to the far left
+     or right edge with its centre off-screen, leaving a clear central column
+     for the content. Alpha is bumped and the blur tightened so the slivers that
+     bleed in from the sides still read. */
   @media (max-width: 640px) {
     .glow {
-      filter: blur(60px);
+      filter: blur(55px);
+      width: 56vw;
+      height: 56vw;
     }
-    .glow-accent    { --a: 0.4; }
-    .glow-soft      { --a: 0.12; }
-    .glow-income-bl { --a: 0.34; }
-    .glow-accent-tl { --a: 0.32; }
-    .glow-income-mid { --a: 0.3; }
-    .glow-accent-br { --a: 0.34; }
+    /* right-edge orbs */
+    .glow-accent {
+      top: -6%;
+      right: -30%;
+      left: auto;
+      bottom: auto;
+      --a: 0.46;
+    }
+    .glow-income-mid {
+      top: auto;
+      bottom: 14%;
+      right: -32%;
+      left: auto;
+      --a: 0.34;
+    }
+    .glow-accent-br {
+      bottom: -6%;
+      right: -28%;
+      top: auto;
+      left: auto;
+      --a: 0.42;
+    }
+    /* left-edge orbs */
+    .glow-accent-tl {
+      top: -3%;
+      left: -30%;
+      right: auto;
+      bottom: auto;
+      --a: 0.4;
+    }
+    .glow-income-bl {
+      bottom: -6%;
+      left: -28%;
+      top: auto;
+      right: auto;
+      --a: 0.44;
+    }
+    .glow-soft {
+      bottom: 26%;
+      left: -32%;
+      top: auto;
+      right: auto;
+      --a: 0.14;
+    }
   }
 
   @keyframes float-a {
