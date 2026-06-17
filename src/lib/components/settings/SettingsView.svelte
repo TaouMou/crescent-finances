@@ -276,7 +276,7 @@
     'h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50';
 </script>
 
-<div class="mx-auto max-w-[720px] space-y-6 p-6">
+<div class="mx-auto max-w-[720px] space-y-6 px-4 py-6 sm:p-6">
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-lg font-semibold text-ink">Settings</h1>
@@ -404,17 +404,19 @@
       <p class="mb-4 text-sm text-muted">No categories yet — add one below or use the starter set.</p>
     {/if}
 
-    <div class="flex items-center gap-2">
-      <ColorField bind:value={newCatColor} label="New category color" />
-      <input
-        type="text"
-        bind:value={newCatName}
-        placeholder="New category name"
-        onkeydown={(e) => e.key === 'Enter' && addCategory()}
-        class={inputCls + ' flex-1'}
-      />
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div class="flex flex-1 items-center gap-2">
+        <ColorField bind:value={newCatColor} label="New category color" />
+        <input
+          type="text"
+          bind:value={newCatName}
+          placeholder="New category name"
+          onkeydown={(e) => e.key === 'Enter' && addCategory()}
+          class={inputCls + ' min-w-0 flex-1'}
+        />
+      </div>
       <button
-        class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+        class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
         onclick={addCategory}
         disabled={!newCatName.trim()}
       >
@@ -462,17 +464,19 @@
       <p class="mb-4 text-sm text-muted">No accounts yet.</p>
     {/if}
 
-    <div class="flex items-center gap-2">
-      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' flex-1'} />
-      <select bind:value={newAccKind} class="h-9 shrink-0 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
-        <option value="bank">Bank</option>
-        <option value="cash">Cash</option>
-        <option value="card">Card</option>
-        <option value="savings">Savings</option>
-      </select>
-      <button class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50" onclick={addAccount} disabled={!newAccName.trim()}>
-        <Plus class="h-4 w-4" /> Add
-      </button>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
+      <div class="flex gap-2">
+        <select bind:value={newAccKind} class="h-9 flex-1 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50 sm:flex-none">
+          <option value="bank">Bank</option>
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="savings">Savings</option>
+        </select>
+        <button class="press flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:flex-none" onclick={addAccount} disabled={!newAccName.trim()}>
+          <Plus class="h-4 w-4" /> Add
+        </button>
+      </div>
     </div>
   </Card>
 
@@ -519,9 +523,9 @@
       </ul>
     {/if}
 
-    <div class="flex items-center gap-2">
-      <input type="text" bind:value={newPoolName} placeholder="New pool name" onkeydown={(e) => e.key === 'Enter' && addPool()} class={inputCls + ' flex-1'} />
-      <button class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50" onclick={addPool} disabled={!newPoolName.trim()}>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <input type="text" bind:value={newPoolName} placeholder="New pool name" onkeydown={(e) => e.key === 'Enter' && addPool()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
+      <button class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto" onclick={addPool} disabled={!newPoolName.trim()}>
         <Plus class="h-4 w-4" /> Add
       </button>
     </div>
@@ -571,19 +575,21 @@
           Restoring <span class="font-medium">{restoreFile.name}</span> will <span class="font-medium text-warn">replace</span>
           the configuration and all transactions on this device.
         </p>
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-col gap-2">
           <input
             type="password"
             bind:value={restorePass}
             placeholder="Backup passphrase"
-            class="h-9 flex-1 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 w-full rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
-          <button class="press h-9 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50" onclick={restoreBackup} disabled={restoring || !restorePass}>
-            {restoring ? 'Restoring…' : 'Restore & replace'}
-          </button>
-          <button class="press h-9 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5" onclick={() => { restoreFile = null; restorePass = ''; }}>
-            Cancel
-          </button>
+          <div class="flex gap-2">
+            <button class="press h-9 flex-1 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50" onclick={restoreBackup} disabled={restoring || !restorePass}>
+              {restoring ? 'Restoring…' : 'Restore & replace'}
+            </button>
+            <button class="press h-9 shrink-0 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5" onclick={() => { restoreFile = null; restorePass = ''; }}>
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     {/if}
@@ -606,10 +612,12 @@
           <p class="text-xs text-muted">Deletes every imported transaction. Keeps categories, rules and settings.</p>
         </div>
         {#if confirming === 'tx'}
-          <div class="flex items-center gap-2">
+          <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <span class="text-xs text-expense">Delete all {$txCount} transactions?</span>
-            <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={clearTransactions}>Delete</button>
-            <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+            <div class="flex gap-2">
+              <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={clearTransactions}>Delete</button>
+              <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+            </div>
           </div>
         {:else}
           <button
@@ -629,10 +637,12 @@
           <p class="text-xs text-muted">Forgets the vault, configuration and passphrase on this device. You'll set up again from scratch.</p>
         </div>
         {#if confirming === 'all'}
-          <div class="flex items-center gap-2">
+          <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <span class="text-xs text-expense">Erase everything on this device?</span>
-            <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={fullReset}>Erase</button>
-            <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+            <div class="flex gap-2">
+              <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={fullReset}>Erase</button>
+              <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+            </div>
           </div>
         {:else}
           <button
