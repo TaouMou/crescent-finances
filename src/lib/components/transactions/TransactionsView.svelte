@@ -2,6 +2,7 @@
   import { MagnifyingGlass, ArrowUp, ArrowDown, ArrowsDownUp, Funnel } from 'phosphor-svelte';
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
+  import { demoMode } from '$lib/stores/demo';
   import { formatMoney } from '$lib/utils/currency';
   import { cn } from '$lib/utils/cn';
   import DateField from '$lib/components/ui/DateField.svelte';
@@ -173,6 +174,16 @@
     </div>
   </div>
 
+  <!-- Demo mode notice -->
+  {#if $demoMode && $transactions === 0}
+    <div class="border-b border-warn/30 bg-warn/10 px-4 py-2.5 md:px-6">
+      <p class="mx-auto max-w-[1180px] text-xs text-warn">
+        Demo mode is on — transactions are real data only and won't show seed figures.
+        <a href="#import" class="ml-1 underline hover:opacity-80">Import a CSV</a> to see your transactions here, or turn off demo mode in <a href="#settings" class="underline hover:opacity-80">Settings</a>.
+      </p>
+    </div>
+  {/if}
+
   <!-- Table header -->
   <div class="border-b border-hairline bg-paper px-4 md:px-6">
     <div class="mx-auto max-w-[1180px]">
@@ -214,6 +225,9 @@
     <div class="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted">
       {#if $transactions === 0}
         <p class="text-sm">No transactions yet.</p>
+        {#if $demoMode}
+          <p class="text-xs text-muted/70">Demo mode is on but only applies to dashboard charts — this page shows real data only.</p>
+        {/if}
         <a href="#import" class="text-sm text-accent hover:underline">Import a CSV file →</a>
       {:else}
         <p class="text-sm">No transactions match the current filters.</p>
