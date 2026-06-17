@@ -72,11 +72,15 @@
         {/if}
       </div>
 
-      <p class="tnum truncate text-xs text-muted">
-        {fmt(t.current)} of {fmt(t.target)}{#if t.targetDate}
-          &nbsp;· {fmt(v.pace.toGo)} to go{#if v.pace.perMonthNeeded != null && v.pace.toGo > 0}
-            &nbsp;· {fmt(v.pace.perMonthNeeded)}/mo to {monthYear(t.targetDate)}{/if}{/if}
-      </p>
+      <!-- Progress on the left, the one actionable number on the right. -->
+      <div class="flex items-baseline justify-between gap-3 text-xs text-muted">
+        <span class="tnum truncate">{fmt(t.current)} of {fmt(t.target)}</span>
+        {#if t.targetDate && v.pace.perMonthNeeded != null && v.pace.toGo > 0}
+          <span class="tnum shrink-0">{fmt(v.pace.perMonthNeeded)}/mo · {monthYear(t.targetDate)}</span>
+        {:else if v.pace.toGo > 0}
+          <span class="tnum shrink-0">{fmt(v.pace.toGo)} to go</span>
+        {/if}
+      </div>
     </div>
   {/each}
 </div>
