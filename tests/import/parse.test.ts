@@ -3,6 +3,8 @@ import {
   parseAmountCents,
   parseDateISO,
   normalizeLabel,
+  normalizeMatchKey,
+  applyLabelCleanup,
   resolveAmountCents
 } from '../../src/lib/import/parse';
 
@@ -61,6 +63,37 @@ describe('parseDateISO', () => {
   it('rejects malformed input', () => {
     expect(parseDateISO('not a date', 'dd/MM/yyyy')).toBeNull();
     expect(parseDateISO('', 'dd/MM/yyyy')).toBeNull();
+  });
+
+  it('parses a timestamped date by discarding the time (Revolut)', () => {
+    expect(parseDateISO('2026-02-20 08:20:25', 'yyyy-MM-dd HH:mm:ss')).toBe('2026-02-20');
+    expect(parseDateISO('2026-03-12 05:10:52', 'yyyy-MM-dd HH:mm:ss')).toBe('2026-03-12');
+  });
+
+  it('still validates the calendar date when a time is present', () => {
+    expect(parseDateISO('2026-02-31 08:20:25', 'yyyy-MM-dd HH:mm:ss')).toBeNull();
+  });
+});
+
+describe('normalizeMatchKey', () => {
+  it('strips accents and lowercases for category matching', () => {
+    expect(normalizeMatchKey('Santé')).toBe('sante');
+    expect(normalizeMatchKey('  Vie   Quotidienne ')).toBe('vie quotidienne');
+  });
+});
+
+describe('applyLabelCleanup', () => {
+  const rules = [
+    { pattern: '^CARTE\\s+\\d{2}/\\d{2}/\\d{2}\\s+', replacement: '' },
+    { pattern: '\\s*CB\\*\\d+\\s*$', replacement: '' }
+  ];
+
+  it('strips card-payment boilerplate down to the merchant', () => {
+    expect(applyLabelCleanup('CARTE 15/05/26 STEAM PURCHASE CB*5767', rules)).toBe('STEAM PURCHASE');
+  });
+
+  it('ignores a malformed pattern without throwing', () => {
+    expect(applyLabelCleanup('STEAM', [{ pattern: '(', replacement: 'x' }])).toBe('STEAM');
   });
 });
 

@@ -63,3 +63,61 @@ describe('buildTransactions', () => {
     expect(a.transactions[0].id).not.toBe(b.transactions[0].id);
   });
 });
+
+describe('buildTransactions — category & entity columns', () => {
+  const boursoSettings: BuildSettings = {
+    mapping: {
+      date: 'dateOp',
+      amount: 'amount',
+      label: 'label',
+      entity: 'suggestedLabel',
+      category: 'category'
+    },
+    dateFormat: 'yyyy-MM-dd',
+    numberFormat: { decimal: ',', thousands: '' },
+    accountId: 'acc-bourso',
+    source: 'bourso.csv',
+    importedAt: '2026-05-18T00:00:00.000Z',
+    // Accent-insensitive name → app categoryId.
+    categoryByName: { sante: 'cat-health' }
+  };
+
+  const boursoRecords = [
+    {
+      dateOp: '2026-05-18',
+      label: 'CARTE 15/05/26 STEAM PURCHASE CB*5767',
+      suggestedLabel: 'Steam',
+      category: 'Santé',
+      amount: '-7,49'
+    }
+  ];
+
+  it('seeds categoryId from the bank category column (accent-insensitive)', async () => {
+    const { transactions } = await buildTransactions(boursoRecords, boursoSettings);
+    expect(transactions[0]).toMatchObject({
+      amount: -749,
+      entity: 'Steam',
+      categoryId: 'cat-health'
+    });
+  });
+
+  it('leaves categoryId null when the bank category has no app match', async () => {
+    const { transactions } = await buildTransactions(boursoRecords, {
+      ...boursoSettings,
+      categoryByName: {}
+    });
+    expect(transactions[0].categoryId).toBeNull();
+  });
+
+  it('derives entity from labelCleanup when no clean-name column is mapped', async () => {
+    const { transactions } = await buildTransactions(boursoRecords, {
+      ...boursoSettings,
+      mapping: { date: 'dateOp', amount: 'amount', label: 'label' },
+      labelCleanup: [
+        { pattern: '^CARTE\\s+\\d{2}/\\d{2}/\\d{2}\\s+', replacement: '' },
+        { pattern: '\\s*CB\\*\\d+\\s*$', replacement: '' }
+      ]
+    });
+    expect(transactions[0].entity).toBe('STEAM PURCHASE');
+  });
+});

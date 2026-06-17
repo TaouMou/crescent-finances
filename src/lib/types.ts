@@ -118,6 +118,10 @@ export interface ImportProfileMapping {
   credit?: string;
   label: string;
   account?: string;
+  /** Column holding the bank's own category name (seeds categoryId; rules win). */
+  category?: string;
+  /** Column holding a clean merchant/payee name (sets entity). */
+  entity?: string;
 }
 
 export interface ImportProfile {
