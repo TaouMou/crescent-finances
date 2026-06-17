@@ -54,7 +54,7 @@
   <div class="glow glow-income-mid" aria-hidden="true"></div>
   <div class="glow glow-accent-br" aria-hidden="true"></div>
 
-  <div class="relative w-full max-w-sm">
+  <div class="relative z-10 w-full max-w-sm">
     <div class="mb-8 flex flex-col items-center text-center">
       <div
         class="mb-4 flex h-12 w-12 items-center justify-center rounded-control bg-accent/10 text-accent"
@@ -162,6 +162,26 @@
     background-image: linear-gradient(to bottom, rgb(var(--c-paper)), rgb(var(--c-paper-deep)));
   }
 
+  /* Faint film-grain dithering: smooth gradients (the page wash + the blurred
+     orbs) quantize into visible bands on 8-bit panels. A subtle high-frequency
+     noise layer breaks up those steps so the falloff reads as continuous.
+     Sits above the orbs (which are z-0 absolute children) but below the
+     content card; pointer-events disabled so it never intercepts clicks. */
+  .lock-surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+  :global(.dark) .lock-surface::after {
+    opacity: 0.05;
+  }
+
   .glow {
     position: absolute;
     border-radius: 9999px;
@@ -174,7 +194,7 @@
     height: 42vmax;
     width: 42vmax;
     --a: 0.26;
-    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 70%);
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), rgb(var(--c-accent) / 0) 72%);
     animation: float-a 18s ease-in-out infinite;
   }
   .glow-soft {
@@ -183,10 +203,10 @@
     height: 38vmax;
     width: 38vmax;
     --a: 0.08;
-    background: radial-gradient(circle, rgb(var(--c-ink) / var(--a)), transparent 70%);
+    background: radial-gradient(circle, rgb(var(--c-ink) / var(--a)), rgb(var(--c-ink) / 0) 72%);
   }
   :global(.dark) .glow-soft {
-    background: radial-gradient(circle, rgb(255 255 255 / var(--a)), transparent 70%);
+    background: radial-gradient(circle, rgb(255 255 255 / var(--a)), rgb(255 255 255 / 0) 72%);
   }
 
   /* Extra bokeh orbs — accent (teal) + income (green) */
@@ -196,7 +216,7 @@
     height: 30vmax;
     width: 30vmax;
     --a: 0.22;
-    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), transparent 68%);
+    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), rgb(var(--c-income) / 0) 70%);
     animation: float-b 22s ease-in-out infinite;
   }
   .glow-accent-tl {
@@ -205,7 +225,7 @@
     height: 28vmax;
     width: 28vmax;
     --a: 0.2;
-    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 65%);
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), rgb(var(--c-accent) / 0) 68%);
     animation: float-c 26s ease-in-out infinite;
   }
   .glow-income-mid {
@@ -214,7 +234,7 @@
     height: 22vmax;
     width: 22vmax;
     --a: 0.18;
-    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), transparent 60%);
+    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), rgb(var(--c-income) / 0) 64%);
     animation: float-a 20s ease-in-out infinite reverse;
   }
   .glow-accent-br {
@@ -223,7 +243,7 @@
     height: 26vmax;
     width: 26vmax;
     --a: 0.21;
-    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 65%);
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), rgb(var(--c-accent) / 0) 68%);
     animation: float-b 24s ease-in-out infinite reverse;
   }
 
