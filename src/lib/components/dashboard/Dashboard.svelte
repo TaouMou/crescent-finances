@@ -5,7 +5,7 @@
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
-  import NetOverTime from '$lib/components/charts/NetOverTime.svelte';
+  import MonthlyFlowChart from '$lib/components/charts/MonthlyFlowChart.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
   import { anomalies, distribution, targets, demoCurrency, demoLocale } from '$lib/seed/dashboard';
@@ -45,15 +45,10 @@
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
 
-  // Real monthly net series (epoch-seconds + value) for uPlot
-  const netSeries = $derived.by(() => {
-    const monthly = monthlyNets($txAll);
-    return monthly
-      .filter((m) => m.bucket >= fromStr.slice(0, 7) && m.bucket <= toStr.slice(0, 7))
-      .map((m) => ({
-        t: Math.floor(new Date(`${m.bucket}-01T00:00:00Z`).getTime() / 1000),
-        value: m.cumulative
-      }));
+  const monthlyData = $derived.by(() => {
+    const fromMonth = fromStr.slice(0, 7);
+    const toMonth = toStr.slice(0, 7);
+    return monthlyNets($txAll).filter((m) => m.bucket >= fromMonth && m.bucket <= toMonth);
   });
 
   // Spending by category for current period
@@ -89,7 +84,7 @@
     <div class="space-y-5 lg:col-span-2">
       <Card>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 class="card-title">Net over time</h2>
+          <h2 class="card-title">Monthly cash flow</h2>
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
@@ -97,12 +92,12 @@
             <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
           </div>
         </div>
-        {#if netSeries.length === 0}
+        {#if monthlyData.length === 0}
           <div class="flex h-32 items-center justify-center text-sm text-muted">
             {$txLoading ? 'Loading…' : 'No data for this period'}
           </div>
         {:else}
-          <NetOverTime data={netSeries} {currency} {locale} />
+          <MonthlyFlowChart data={monthlyData} {currency} {locale} />
         {/if}
       </Card>
 
