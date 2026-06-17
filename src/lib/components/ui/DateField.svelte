@@ -1,7 +1,7 @@
 <script lang="ts">
   import { CalendarDots, CaretLeft, CaretRight, X } from 'phosphor-svelte';
-  import { scale } from 'svelte/transition';
   import { toISODate } from '$lib/utils/dates';
+  import PickerOverlay from './PickerOverlay.svelte';
 
   let {
     value = $bindable(),
@@ -16,9 +16,6 @@
     label: string;
     clearable?: boolean;
   } = $props();
-
-  const reduce =
-    typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Parse an ISO date string, falling back to today when empty/invalid.
   function parse(v: string): Date {
@@ -101,12 +98,6 @@
   }
 </script>
 
-<svelte:window
-  onkeydown={(e) => {
-    if (e.key === 'Escape') open = false;
-  }}
-/>
-
 <div class="relative inline-block">
   <button
     bind:this={trigger}
@@ -132,76 +123,57 @@
     </button>
   {/if}
 
-  {#if open}
-    <!-- click-away layer -->
-    <button
-      class="fixed inset-0 z-40 cursor-default"
-      tabindex="-1"
-      aria-hidden="true"
-      onclick={() => (open = false)}
-    ></button>
-
-    <div
-      class="absolute top-full z-50 mt-2 w-[244px] max-w-[calc(100vw-1rem)] rounded-card bg-surface p-3 ring-1 ring-hairline {align ===
-      'right'
-        ? 'right-0 origin-top-right'
-        : 'left-0 origin-top-left'}"
-      style="box-shadow: var(--shadow-card)"
-      role="dialog"
-      aria-label={label}
-      transition:scale={{ duration: reduce ? 0 : 150, start: 0.96, opacity: 0 }}
-    >
-      <div class="mb-2 flex items-center justify-between">
-        <button
-          type="button"
-          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          onclick={() => step(-1)}
-          aria-label="Previous month"
-        >
-          <CaretLeft class="h-4 w-4" />
-        </button>
-        <span class="text-sm font-medium text-ink">{monthLabel}</span>
-        <button
-          type="button"
-          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          onclick={() => step(1)}
-          aria-label="Next month"
-        >
-          <CaretRight class="h-4 w-4" />
-        </button>
-      </div>
-
-      <div class="mb-1 grid grid-cols-7 gap-0.5">
-        {#each WEEKDAYS as w (w)}
-          <span class="grid h-6 place-items-center text-[10px] font-medium text-muted/70">{w}</span>
-        {/each}
-      </div>
-
-      <div class="grid grid-cols-7 gap-0.5">
-        {#each days as d (d.getTime())}
-          {@const sel = value && sameDay(d, new Date(`${value}T00:00:00`))}
-          {@const off = d.getMonth() !== view.getMonth()}
-          {@const dis = disabled(d)}
-          <button
-            type="button"
-            disabled={dis}
-            onclick={() => pick(d)}
-            aria-label={d.toLocaleDateString(undefined, { dateStyle: 'full' })}
-            aria-current={sameDay(d, today) ? 'date' : undefined}
-            class="press grid h-8 place-items-center rounded-control text-xs tabular-nums transition-colors
-              {sel
-              ? 'bg-accent font-medium text-white hover:bg-accent'
-              : dis
-                ? 'cursor-not-allowed text-muted/30'
-                : off
-                  ? 'text-muted/50 hover:bg-ink/5'
-                  : 'text-ink hover:bg-ink/5 active:bg-ink/10'}
-              {sameDay(d, today) && !sel ? 'ring-1 ring-inset ring-accent/40' : ''}"
-          >
-            {d.getDate()}
-          </button>
-        {/each}
-      </div>
+  <PickerOverlay bind:open {label} title={label} {align}>
+    <div class="mb-2 flex items-center justify-between">
+      <button
+        type="button"
+        class="press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:h-7 sm:w-7"
+        onclick={() => step(-1)}
+        aria-label="Previous month"
+      >
+        <CaretLeft class="h-4 w-4" />
+      </button>
+      <span class="text-sm font-medium text-ink">{monthLabel}</span>
+      <button
+        type="button"
+        class="press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:h-7 sm:w-7"
+        onclick={() => step(1)}
+        aria-label="Next month"
+      >
+        <CaretRight class="h-4 w-4" />
+      </button>
     </div>
-  {/if}
+
+    <div class="mb-1 grid grid-cols-7 gap-0.5">
+      {#each WEEKDAYS as w (w)}
+        <span class="grid h-6 place-items-center text-[10px] font-medium text-muted/70">{w}</span>
+      {/each}
+    </div>
+
+    <div class="grid grid-cols-7 gap-0.5">
+      {#each days as d (d.getTime())}
+        {@const sel = value && sameDay(d, new Date(`${value}T00:00:00`))}
+        {@const off = d.getMonth() !== view.getMonth()}
+        {@const dis = disabled(d)}
+        <button
+          type="button"
+          disabled={dis}
+          onclick={() => pick(d)}
+          aria-label={d.toLocaleDateString(undefined, { dateStyle: 'full' })}
+          aria-current={sameDay(d, today) ? 'date' : undefined}
+          class="press grid h-11 place-items-center rounded-control text-sm tabular-nums transition-colors sm:h-8 sm:text-xs
+            {sel
+            ? 'bg-accent font-medium text-white hover:bg-accent'
+            : dis
+              ? 'cursor-not-allowed text-muted/30'
+              : off
+                ? 'text-muted/50 hover:bg-ink/5'
+                : 'text-ink hover:bg-ink/5 active:bg-ink/10'}
+            {sameDay(d, today) && !sel ? 'ring-1 ring-inset ring-accent/40' : ''}"
+        >
+          {d.getDate()}
+        </button>
+      {/each}
+    </div>
+  </PickerOverlay>
 </div>

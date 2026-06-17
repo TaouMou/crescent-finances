@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DownloadSimple, UploadSimple, Check, Plus, Trash, Warning, Sparkle } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import ColorField from '$lib/components/ui/ColorField.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
   import { demoMode } from '$lib/stores/demo';
@@ -377,12 +378,11 @@
       <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
         {#each $config?.categories ?? [] as cat (cat.id)}
           <li class="flex items-center gap-2 py-2">
-            <input
-              type="color"
+            <ColorField
               value={cat.color}
-              onchange={(e) => updateCategory(cat.id, 'color', e.currentTarget.value)}
-              class="h-7 w-9 shrink-0 rounded-control border border-hairline bg-surface p-0.5"
-              aria-label="Category color"
+              onValue={(c) => updateCategory(cat.id, 'color', c)}
+              label="{cat.name || 'Category'} color"
+              class="h-8 w-9"
             />
             <input
               type="text"
@@ -405,12 +405,7 @@
     {/if}
 
     <div class="flex items-center gap-2">
-      <input
-        type="color"
-        bind:value={newCatColor}
-        class="h-9 w-10 shrink-0 rounded-control border border-hairline bg-surface p-0.5"
-        aria-label="New category color"
-      />
+      <ColorField bind:value={newCatColor} label="New category color" />
       <input
         type="text"
         bind:value={newCatName}
