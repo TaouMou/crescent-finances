@@ -146,7 +146,7 @@
     </form>
 
     {#if firstRun}
-      <div class="mt-5 flex items-start gap-2 rounded-control border border-warn/30 bg-warn/5 p-3">
+      <div class="warn-panel mt-5 flex items-start gap-2 rounded-control p-3">
         <span class="mt-0.5 text-warn"><Warning size={16} weight="fill" /></span>
         <p class="text-xs leading-relaxed text-muted">
           There is no recovery. If you lose this passphrase, your data cannot be decrypted — not by
@@ -173,7 +173,8 @@
     right: -5%;
     height: 42vmax;
     width: 42vmax;
-    background: radial-gradient(circle, rgb(var(--c-accent) / 0.18), transparent 70%);
+    --a: 0.26;
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 70%);
     animation: float-a 18s ease-in-out infinite;
   }
   .glow-soft {
@@ -181,10 +182,11 @@
     left: -10%;
     height: 38vmax;
     width: 38vmax;
-    background: radial-gradient(circle, rgb(var(--c-ink) / 0.06), transparent 70%);
+    --a: 0.08;
+    background: radial-gradient(circle, rgb(var(--c-ink) / var(--a)), transparent 70%);
   }
   :global(.dark) .glow-soft {
-    background: radial-gradient(circle, rgb(255 255 255 / 0.05), transparent 70%);
+    background: radial-gradient(circle, rgb(255 255 255 / var(--a)), transparent 70%);
   }
 
   /* Extra bokeh orbs — accent (teal) + income (green) */
@@ -193,7 +195,8 @@
     left: 15%;
     height: 30vmax;
     width: 30vmax;
-    background: radial-gradient(circle, rgb(var(--c-income) / 0.14), transparent 68%);
+    --a: 0.22;
+    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), transparent 68%);
     animation: float-b 22s ease-in-out infinite;
   }
   .glow-accent-tl {
@@ -201,7 +204,8 @@
     left: -8%;
     height: 28vmax;
     width: 28vmax;
-    background: radial-gradient(circle, rgb(var(--c-accent) / 0.12), transparent 65%);
+    --a: 0.2;
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 65%);
     animation: float-c 26s ease-in-out infinite;
   }
   .glow-income-mid {
@@ -209,7 +213,8 @@
     right: 5%;
     height: 22vmax;
     width: 22vmax;
-    background: radial-gradient(circle, rgb(var(--c-income) / 0.10), transparent 60%);
+    --a: 0.18;
+    background: radial-gradient(circle, rgb(var(--c-income) / var(--a)), transparent 60%);
     animation: float-a 20s ease-in-out infinite reverse;
   }
   .glow-accent-br {
@@ -217,8 +222,67 @@
     right: -8%;
     height: 26vmax;
     width: 26vmax;
-    background: radial-gradient(circle, rgb(var(--c-accent) / 0.13), transparent 65%);
+    --a: 0.21;
+    background: radial-gradient(circle, rgb(var(--c-accent) / var(--a)), transparent 65%);
     animation: float-b 24s ease-in-out infinite reverse;
+  }
+
+  /* On phones, vmax sizing makes the orbs as wide as the screen is *tall*, so
+     they sprawl across the centre and wash out the icon/title/inputs. Re-size
+     them in vw (relative to the narrow width) and pin each one to the far left
+     or right edge with its centre off-screen, leaving a clear central column
+     for the content. Alpha is bumped and the blur tightened so the slivers that
+     bleed in from the sides still read. */
+  @media (max-width: 640px) {
+    .glow {
+      filter: blur(55px);
+      width: 56vw;
+      height: 56vw;
+    }
+    /* right-edge orbs */
+    .glow-accent {
+      top: -6%;
+      right: -30%;
+      left: auto;
+      bottom: auto;
+      --a: 0.46;
+    }
+    .glow-income-mid {
+      top: auto;
+      bottom: 14%;
+      right: -32%;
+      left: auto;
+      --a: 0.34;
+    }
+    .glow-accent-br {
+      bottom: -6%;
+      right: -28%;
+      top: auto;
+      left: auto;
+      --a: 0.42;
+    }
+    /* left-edge orbs */
+    .glow-accent-tl {
+      top: -3%;
+      left: -30%;
+      right: auto;
+      bottom: auto;
+      --a: 0.4;
+    }
+    .glow-income-bl {
+      bottom: -6%;
+      left: -28%;
+      top: auto;
+      right: auto;
+      --a: 0.44;
+    }
+    .glow-soft {
+      bottom: 26%;
+      left: -32%;
+      top: auto;
+      right: auto;
+      --a: 0.14;
+    }
   }
 
   @keyframes float-a {
@@ -272,5 +336,15 @@
   }
   .submit-btn:disabled {
     cursor: not-allowed;
+  }
+
+  /* Opaque surface (matching the inputs) with the amber tint layered on top, so
+     the recovery warning sits clearly above the bokeh instead of letting the
+     side glows bleed through it. */
+  .warn-panel {
+    background-color: rgb(var(--c-surface));
+    background-image: linear-gradient(rgb(var(--c-warn) / 0.08), rgb(var(--c-warn) / 0.08));
+    border: 1px solid rgb(var(--c-warn) / 0.3);
+    box-shadow: 0 1px 2px rgb(26 29 33 / 0.05);
   }
 </style>
