@@ -1,0 +1,4 @@
+# Hash-based SPA fallback for Cloudflare Pages: serve the app shell for any
+# otherwise-unmatched path (static assets are matched first). Cloudflare reads
+# this file from the build output (dist/); Vite copies it there from public/.
+/*    /index.html   200
