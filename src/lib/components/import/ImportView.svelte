@@ -332,7 +332,7 @@
           bind:value={selectedBankKey}
           onchange={() => selectedBankKey && applyBankPreset(selectedBankKey)}
         >
-          <option value="">Manual mapping…</option>
+          <option value="">Manual mapping</option>
           {#each BANK_PRESETS as b (b.key)}
             <option value={b.key} disabled={b.incomplete}>{b.label}</option>
           {/each}
@@ -347,7 +347,7 @@
             bind:value={selectedProfileId}
             onchange={() => selectedProfileId && applyProfile(selectedProfileId)}
           >
-            <option value="">Manual mapping…</option>
+            <option value="">Manual mapping</option>
             {#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
           </select>
         </label>
