@@ -217,6 +217,21 @@
     rebuildPreview();
   }
 
+  /**
+   * Bank dropdown change: apply the chosen preset, or — when "Manual mapping" is
+   * picked — restore the auto-detected defaults so the user gets the guessed
+   * mapping back instead of being stuck on the last preset's settings.
+   */
+  function onBankChange() {
+    if (selectedBankKey) {
+      applyBankPreset(selectedBankKey);
+    } else if (parsed) {
+      selectedProfileId = '';
+      applyDefaults(parsed);
+      rebuildPreview();
+    }
+  }
+
   async function toggleHeader() {
     if (!rawBytes || !parsed) return;
     await parseBytes(rawBytes, { hasHeader: !parsed.hasHeader });
@@ -330,7 +345,7 @@
         <select
           class="field"
           bind:value={selectedBankKey}
-          onchange={() => selectedBankKey && applyBankPreset(selectedBankKey)}
+          onchange={onBankChange}
         >
           <option value="">Manual mapping</option>
           {#each BANK_PRESETS as b (b.key)}
