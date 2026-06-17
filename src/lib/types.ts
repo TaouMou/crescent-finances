@@ -81,7 +81,7 @@ export type SectionCalc =
   | { type: 'remainder' }
   | { type: 'filterSum'; filter: TransactionFilter; planned?: number }
   | { type: 'accountBalance'; assetPoolId: string }
-  | { type: 'target'; targetAmount: number; targetDate?: string; assetPoolId?: string };
+  | { type: 'target'; targetAmount: number; targetDate?: string; startDate?: string; assetPoolId?: string };
 
 export type CalendarKind = 'gregorian' | 'hijri' | 'custom';
 

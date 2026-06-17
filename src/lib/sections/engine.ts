@@ -83,7 +83,11 @@ export function evaluateDistribution(
     // (a balance and the allocation intents have no separate "actual"). Actual is
     // a positive magnitude to match how planned is expressed.
     const actual = s.calc.type === 'filterSum' ? Math.abs(filterSum(txs, s.calc.filter)) : p;
-    return { id: s.id, name: s.name, color: s.color, kind, plannedPct, planned: p, actual };
+    // Tracked spending is the only type with a real actual ≠ planned, and it is a
+    // spending bucket: over plan = bad. The allocation intents always sit on plan
+    // (actual == planned), so their direction never colours a delta.
+    const direction = s.calc.type === 'filterSum' ? ('lowerIsBetter' as const) : undefined;
+    return { id: s.id, name: s.name, color: s.color, kind, plannedPct, planned: p, actual, direction };
   });
 
   return { id: group.id, name: group.name, source: 'Income', total, sections: distSections };
@@ -109,9 +113,78 @@ export function evaluateTargets(
         color: s.color,
         current: Math.max(0, poolBalance(pools, c.assetPoolId, txs)),
         target: c.targetAmount,
-        targetDate: c.targetDate
+        targetDate: c.targetDate,
+        startDate: c.startDate
       };
     });
+}
+
+const MONTH_MS = (365.25 / 12) * 24 * 60 * 60 * 1000;
+/** Fallback pace window when a goal has a target date but no explicit start. */
+const DEFAULT_PACE_WINDOW_MS = 12 * MONTH_MS;
+/** Tolerance (in fraction-of-goal) before a goal reads as ahead/behind vs on track. */
+const PACE_EPS = 0.02;
+
+export interface TargetPace {
+  /** Progress so far, current/target, clamped to 0..1. */
+  progressFraction: number;
+  /** Where you'd be by now to land exactly on the target date, 0..1; null without a target date. */
+  expectedFraction: number | null;
+  /** Schedule standing. `none` = no target date to pace against. */
+  status: 'ahead' | 'behind' | 'onTrack' | 'done' | 'none';
+  /** Remaining amount to reach the target (minor units, ≥ 0). */
+  toGo: number;
+  /** Whole months left until the target date (≥ 0); null without a target date. */
+  monthsRemaining: number | null;
+  /** Amount to set aside each remaining month to hit the target on time; null without a target date. */
+  perMonthNeeded: number | null;
+}
+
+/**
+ * Pure pace evaluation for a goal: how far along you are versus where a steady
+ * contribution from `startDate` (or a default 12-month window) to `targetDate`
+ * would put you today, plus the monthly amount still needed. `now` is injected
+ * for testability. Money is integer minor units.
+ */
+export function targetPace(
+  t: { current: number; target: number; startDate?: string; targetDate?: string },
+  now: number = Date.now()
+): TargetPace {
+  const target = Math.max(0, t.target);
+  const progressFraction = target > 0 ? Math.min(1, Math.max(0, t.current / target)) : 0;
+  const toGo = Math.max(0, target - t.current);
+  const done = target > 0 && t.current >= target;
+
+  if (!t.targetDate) {
+    return {
+      progressFraction,
+      expectedFraction: null,
+      status: done ? 'done' : 'none',
+      toGo,
+      monthsRemaining: null,
+      perMonthNeeded: null
+    };
+  }
+
+  const end = new Date(`${t.targetDate}T00:00:00`).getTime();
+  const start = t.startDate
+    ? new Date(`${t.startDate}T00:00:00`).getTime()
+    : end - DEFAULT_PACE_WINDOW_MS;
+  const span = end - start;
+  const expectedFraction =
+    span > 0 ? Math.min(1, Math.max(0, (now - start) / span)) : now >= end ? 1 : 0;
+
+  const monthsRemaining = Math.max(0, Math.ceil((end - now) / MONTH_MS));
+  // Spread the shortfall over whole months left; once the deadline is here it is all due now.
+  const perMonthNeeded = done ? 0 : Math.round(toGo / Math.max(1, monthsRemaining));
+
+  let status: TargetPace['status'];
+  if (done) status = 'done';
+  else if (progressFraction >= expectedFraction + PACE_EPS) status = 'ahead';
+  else if (progressFraction <= expectedFraction - PACE_EPS) status = 'behind';
+  else status = 'onTrack';
+
+  return { progressFraction, expectedFraction, status, toGo, monthsRemaining, perMonthNeeded };
 }
 
 export interface EvaluatedGroup {

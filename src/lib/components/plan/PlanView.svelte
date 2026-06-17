@@ -82,6 +82,7 @@
     amountMajor: number;
     targetMajor: number;
     targetDate: string;
+    startDate: string;
     // filterSum fields
     filterCategoryIds: string[];
     filterAccountIds: string[];
@@ -108,6 +109,7 @@
     amountMajor: 0,
     targetMajor: 0,
     targetDate: '',
+    startDate: '',
     filterCategoryIds: [],
     filterAccountIds: [],
     filterTagIds: [],
@@ -146,6 +148,7 @@
     if (s.calc.type === 'target') {
       d.targetMajor = s.calc.targetAmount / 100;
       d.targetDate = s.calc.targetDate ?? '';
+      d.startDate = s.calc.startDate ?? '';
       d.assetPoolId = s.calc.assetPoolId ?? '';
     }
     if (s.calc.type === 'filterSum') {
@@ -193,6 +196,7 @@
           type: 'target',
           targetAmount: Math.round((Number(d.targetMajor) || 0) * 100),
           targetDate: d.targetDate || undefined,
+          startDate: d.startDate || undefined,
           assetPoolId: d.assetPoolId || undefined
         };
       case 'accountBalance':
@@ -407,6 +411,10 @@
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target date (optional)</span>
             <DateField bind:value={editingSection.targetDate} clearable label="Target date" />
+          </label>
+          <label class="flex flex-col gap-1 sm:col-span-2">
+            <span class="text-xs text-muted">Start date (optional — anchors the on-track pace marker)</span>
+            <DateField bind:value={editingSection.startDate} clearable label="Start date" />
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Track progress from (optional)</span>

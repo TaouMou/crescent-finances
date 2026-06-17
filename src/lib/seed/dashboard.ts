@@ -67,6 +67,14 @@ export const anomalies: AnomalyFlag[] = [
 
 export type SectionKind = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum' | 'accountBalance';
 
+/**
+ * Whether realising more than planned is good or bad for this section, used to
+ * colour the planned-vs-actual delta. Spending buckets are `lowerIsBetter`
+ * (over budget = bad); savings/investing buckets are `higherIsBetter` (over =
+ * good). Defaults to `lowerIsBetter` when unset.
+ */
+export type SectionDirection = 'higherIsBetter' | 'lowerIsBetter';
+
 export interface DistributionSection {
   id: string;
   name: string;
@@ -78,6 +86,8 @@ export interface DistributionSection {
   planned: number;
   /** Actual amount realised, minor units. */
   actual: number;
+  /** Polarity for delta colouring; defaults to `lowerIsBetter`. */
+  direction?: SectionDirection;
 }
 
 export interface DistributionGroup {
@@ -95,9 +105,9 @@ export const distribution: DistributionGroup = {
   source: 'Income',
   total: summary.income,
   sections: [
-    { id: 's1', name: 'Savings',   color: '#0DA882', kind: 'percentage', plannedPct: 30, planned: 123_600, actual: 123_600 },
-    { id: 's2', name: 'Investing', color: '#2B8AB5', kind: 'percentage', plannedPct: 20, planned: 82_400,  actual: 70_000  },
-    { id: 's3', name: 'Spending',  color: '#D4843A', kind: 'remainder',  plannedPct: 50, planned: 206_000, actual: 268_450 }
+    { id: 's1', name: 'Savings',   color: '#0DA882', kind: 'percentage', plannedPct: 30, planned: 123_600, actual: 132_000, direction: 'higherIsBetter' },
+    { id: 's2', name: 'Investing', color: '#2B8AB5', kind: 'percentage', plannedPct: 20, planned: 82_400,  actual: 70_000,  direction: 'higherIsBetter' },
+    { id: 's3', name: 'Spending',  color: '#D4843A', kind: 'remainder',  plannedPct: 50, planned: 206_000, actual: 268_450, direction: 'lowerIsBetter' }
   ]
 };
 
@@ -108,10 +118,13 @@ export interface TargetSection {
   current: number;
   target: number;
   targetDate?: string;
+  /** When the goal started accumulating; anchors the on-track pace marker. */
+  startDate?: string;
 }
 
 export const targets: TargetSection[] = [
-  { id: 't1', name: 'Emergency fund', color: '#14776B', current: 540_000, target: 800_000, targetDate: '2026-12-01' }
+  { id: 't1', name: 'Emergency fund', color: '#14776B', current: 540_000, target: 800_000, startDate: '2025-01-01', targetDate: '2026-12-01' },
+  { id: 't2', name: 'New laptop', color: '#8A6FB0', current: 180_000, target: 250_000, startDate: '2026-01-01', targetDate: '2026-12-01' }
 ];
 
 import type { MonthlyNet } from '$lib/aggregations';

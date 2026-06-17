@@ -85,6 +85,7 @@
   );
 
   const categories = $derived($config?.categories ?? []);
+  const tags = $derived($config?.tags ?? []);
 
   function fieldLabel(f: RuleMatch['field']) {
     return f === 'label' ? 'Description' : 'Entity';
@@ -201,6 +202,31 @@
             class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
+
+        <!-- Add tags -->
+        {#if tags.length > 0}
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <span class="text-xs text-muted">Add tags</span>
+            <div class="flex flex-wrap gap-x-5 gap-y-2 rounded-control border border-hairline bg-surface px-3 py-2.5">
+              {#each tags as tag (tag.id)}
+                <label class="flex cursor-pointer items-center gap-1.5 text-sm text-ink select-none">
+                  <input
+                    type="checkbox"
+                    checked={editing.addTagIds?.includes(tag.id) ?? false}
+                    onchange={(e) => {
+                      if (!editing) return;
+                      const ids = new Set(editing.addTagIds ?? []);
+                      if (e.currentTarget.checked) ids.add(tag.id); else ids.delete(tag.id);
+                      editing.addTagIds = [...ids];
+                    }}
+                  />
+                  <span class="h-2 w-2 shrink-0 rounded-full" style={`background:${tag.color}`}></span>
+                  {tag.name}
+                </label>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Case sensitive -->
@@ -236,14 +262,18 @@
   {:else if sortedRules.length > 0}
     <div class="divide-y divide-hairline rounded-xl border border-hairline bg-surface">
       {#each sortedRules as rule (rule.id)}
-        <div class={cn('flex items-center gap-4 px-4 py-3.5', !rule.enabled && 'opacity-50')}>
-          <!-- Priority badge -->
-          <span class="w-6 shrink-0 text-center text-xs font-medium text-muted">{rule.priority}</span>
+        <div class={cn(
+          'grid grid-cols-[auto_1fr_auto] items-center gap-x-3 px-4 py-3',
+          'sm:flex sm:gap-4 sm:py-3.5',
+          !rule.enabled && 'opacity-50'
+        )}>
+          <!-- Priority: desktop only -->
+          <span class="hidden sm:block w-6 shrink-0 text-center text-xs font-medium text-muted">{rule.priority}</span>
 
-          <!-- Toggle -->
+          <!-- Toggle: spans both rows on mobile -->
           <button
             class={cn(
-              'group relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-[var(--ease-out)]',
+              'row-span-2 group relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-[var(--ease-out)]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
               rule.enabled ? 'bg-accent' : 'bg-ink/20 hover:bg-ink/25'
             )}
@@ -261,39 +291,19 @@
             ></span>
           </button>
 
-          <!-- Description -->
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm text-ink">
-              <span class="text-muted">{fieldLabel(rule.match.field)}</span>
-              {' '}
-              <span class="italic">{typeLabel(rule.match.type)}</span>
-              {' '}
-              <code class="rounded bg-ink/8 px-1 py-0.5 text-xs">{rule.match.value}</code>
-              {#if !rule.match.caseSensitive}
-                <span class="text-xs text-muted"> (case-insensitive)</span>
-              {/if}
-            </p>
-            <p class="mt-0.5 truncate text-xs text-muted">
-              {#if rule.setCategoryId}
-                {@const cat = categories.find((c) => c.id === rule.setCategoryId)}
-                Set category → {cat?.name ?? rule.setCategoryId}
-              {/if}
-              {#if rule.setEntity}
-                {#if rule.setCategoryId} · {/if}
-                Set entity → {rule.setEntity}
-              {/if}
-              {#if rule.addTagIds?.length}
-                {#if rule.setCategoryId || rule.setEntity} · {/if}
-                Add tags ({rule.addTagIds.length})
-              {/if}
-              {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
-                (no actions)
-              {/if}
-            </p>
-          </div>
+          <!-- Primary text -->
+          <p class="min-w-0 truncate text-sm text-ink">
+            <span class="text-[11px] font-medium text-muted sm:hidden">{rule.priority} · </span>
+            <span class="text-muted">{fieldLabel(rule.match.field)}</span>
+            {' '}<span class="italic">{typeLabel(rule.match.type)}</span>
+            {' '}<code class="rounded bg-ink/8 px-1 py-0.5 text-xs">{rule.match.value}</code>
+            {#if !rule.match.caseSensitive}
+              <span class="hidden text-xs text-muted sm:inline"> (case-insensitive)</span>
+            {/if}
+          </p>
 
-          <!-- Edit / delete -->
-          <div class="flex shrink-0 items-center gap-1">
+          <!-- Edit / delete: spans both rows on mobile -->
+          <div class="row-span-2 flex shrink-0 items-center gap-1">
             <button
               class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
               onclick={() => startEdit(rule)}
@@ -309,6 +319,49 @@
               <Trash class="h-4 w-4" />
             </button>
           </div>
+
+          <!-- Secondary text: second row on mobile, inline on desktop -->
+          <p class="min-w-0 truncate text-xs text-muted sm:hidden">
+            {#if rule.setCategoryId}
+              {@const cat = categories.find((c) => c.id === rule.setCategoryId)}
+              → {cat?.name ?? rule.setCategoryId}
+            {/if}
+            {#if rule.setEntity}
+              {#if rule.setCategoryId} · {/if}→ {rule.setEntity}
+            {/if}
+            {#if rule.addTagIds?.length}
+              {#if rule.setCategoryId || rule.setEntity} · {/if}
+              {#each rule.addTagIds as tid, i (tid)}
+                {@const tag = tags.find((t) => t.id === tid)}
+                {#if tag}{#if i > 0}, {/if}<span class="inline-flex items-center gap-1"><span class="inline-block h-1.5 w-1.5 rounded-full" style={`background:${tag.color}`}></span>{tag.name}</span>{/if}
+              {/each}
+            {/if}
+            {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
+              no actions
+            {/if}
+          </p>
+
+          <!-- Secondary text: desktop only (flex sibling) -->
+          <p class="hidden sm:block min-w-0 flex-1 truncate text-xs text-muted">
+            {#if rule.setCategoryId}
+              {@const cat = categories.find((c) => c.id === rule.setCategoryId)}
+              Set category → {cat?.name ?? rule.setCategoryId}
+            {/if}
+            {#if rule.setEntity}
+              {#if rule.setCategoryId} · {/if}
+              Set entity → {rule.setEntity}
+            {/if}
+            {#if rule.addTagIds?.length}
+              {#if rule.setCategoryId || rule.setEntity} · {/if}
+              {#each rule.addTagIds as tid, i (tid)}
+                {@const tag = tags.find((t) => t.id === tid)}
+                {#if tag}{#if i > 0}, {/if}<span class="inline-flex items-center gap-1"><span class="inline-block h-1.5 w-1.5 rounded-full" style={`background:${tag.color}`}></span>{tag.name}</span>{/if}
+              {/each}
+            {/if}
+            {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
+              (no actions)
+            {/if}
+          </p>
         </div>
       {/each}
     </div>

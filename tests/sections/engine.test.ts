@@ -3,7 +3,8 @@ import {
   evaluateDistribution,
   evaluateTargets,
   evaluatePlan,
-  sectionsOfGroup
+  sectionsOfGroup,
+  targetPace
 } from '../../src/lib/sections/engine';
 import type { Section, SectionGroup, Transaction } from '../../src/lib/types';
 
@@ -131,6 +132,15 @@ describe('evaluateDistribution', () => {
     expect(dist.sections[0].actual).toBe(8000);
   });
 
+  it('marks tracked spending as lowerIsBetter and leaves allocations undirected', () => {
+    const data: Transaction[] = [makeTx({ amount: 400_000 }), makeTx({ id: 'g1', amount: -8000, categoryId: 'groceries' })];
+    const savings = makeSection({ id: 's1', order: 0, calc: { type: 'percentage', of: { kind: 'income' }, percent: 30 } });
+    const tracked = makeSection({ id: 's2', order: 1, calc: { type: 'filterSum', filter: { categoryIds: ['groceries'] }, planned: 10_000 } });
+    const dist = evaluateDistribution(group, [savings, tracked], data);
+    expect(dist.sections[0].direction).toBeUndefined();
+    expect(dist.sections[1].direction).toBe('lowerIsBetter');
+  });
+
   it('filterSum actual is 0 when no transactions match', () => {
     const tracked = makeSection({
       id: 's1',
@@ -157,11 +167,11 @@ describe('evaluateDistribution', () => {
 
 describe('evaluateTargets', () => {
   it('extracts target sections with current=0 when not linked to a pool', () => {
-    const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, targetDate: '2026-12-01' } });
+    const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, targetDate: '2026-12-01', startDate: '2025-01-01' } });
     const other = makeSection({ id: 's1', order: 1, calc: { type: 'fixed', amount: 1 } });
     const targets = evaluateTargets([goal, other]);
     expect(targets).toHaveLength(1);
-    expect(targets[0]).toMatchObject({ id: 't1', name: 'Emergency fund', current: 0, target: 800_000, targetDate: '2026-12-01' });
+    expect(targets[0]).toMatchObject({ id: 't1', name: 'Emergency fund', current: 0, target: 800_000, targetDate: '2026-12-01', startDate: '2025-01-01' });
   });
 
   it('reads current from the linked asset pool balance', () => {
@@ -173,6 +183,48 @@ describe('evaluateTargets', () => {
     const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, assetPoolId: 'pool1' } });
     const targets = evaluateTargets([goal], data, pools);
     expect(targets[0].current).toBe(460_000); // 500_000 - 40_000
+  });
+});
+
+describe('targetPace', () => {
+  const NOW = new Date('2026-06-17T00:00:00').getTime();
+
+  it('reports no schedule when there is no target date', () => {
+    const p = targetPace({ current: 50_000, target: 100_000 }, NOW);
+    expect(p.status).toBe('none');
+    expect(p.expectedFraction).toBeNull();
+    expect(p.perMonthNeeded).toBeNull();
+    expect(p.toGo).toBe(50_000);
+    expect(p.progressFraction).toBeCloseTo(0.5);
+  });
+
+  it('flags a goal behind its on-track pace', () => {
+    // ~76% of the window elapsed, but only 67.5% saved → behind.
+    const p = targetPace(
+      { current: 540_000, target: 800_000, startDate: '2025-01-01', targetDate: '2026-12-01' },
+      NOW
+    );
+    expect(p.status).toBe('behind');
+    expect(p.expectedFraction! > p.progressFraction).toBe(true);
+  });
+
+  it('flags a goal ahead of pace and computes the monthly amount still needed', () => {
+    // Half the window elapsed, 72% saved → ahead. 70_000 left over ~6 months.
+    const p = targetPace(
+      { current: 180_000, target: 250_000, startDate: '2026-01-01', targetDate: '2026-12-01' },
+      NOW
+    );
+    expect(p.status).toBe('ahead');
+    expect(p.toGo).toBe(70_000);
+    expect(p.monthsRemaining).toBe(6);
+    expect(p.perMonthNeeded).toBe(Math.round(70_000 / 6));
+  });
+
+  it('reports done (and zero monthly) once the target is reached', () => {
+    const p = targetPace({ current: 100_000, target: 100_000, targetDate: '2026-12-01' }, NOW);
+    expect(p.status).toBe('done');
+    expect(p.toGo).toBe(0);
+    expect(p.perMonthNeeded).toBe(0);
   });
 });
 

@@ -85,6 +85,7 @@ const sectionCalcSchema = z.discriminatedUnion('type', [
     type: z.literal('target'),
     targetAmount: z.number().int(),
     targetDate: z.string().optional(),
+    startDate: z.string().optional(),
     assetPoolId: z.string().optional()
   })
 ]);
