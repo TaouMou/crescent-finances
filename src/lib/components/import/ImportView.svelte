@@ -332,7 +332,7 @@
           bind:value={selectedBankKey}
           onchange={() => selectedBankKey && applyBankPreset(selectedBankKey)}
         >
-          <option value="">Manual / other…</option>
+          <option value="">Manual mapping…</option>
           {#each BANK_PRESETS as b (b.key)}
             <option value={b.key} disabled={b.incomplete}>{b.label}</option>
           {/each}
