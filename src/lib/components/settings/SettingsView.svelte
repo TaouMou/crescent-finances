@@ -388,7 +388,7 @@
               type="text"
               value={cat.name}
               onchange={(e) => updateCategory(cat.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
             />
             <button
               class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
@@ -438,7 +438,7 @@
               type="text"
               value={acc.name}
               onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
             />
             <select
               value={acc.kind}
