@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { Plus, Trash, PencilSimple, Check, X, Target } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import ColorField from '$lib/components/ui/ColorField.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
@@ -371,11 +372,7 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Color</span>
-          <input
-            type="color"
-            bind:value={editingSection.color}
-            class="h-9 w-full rounded-control border border-hairline bg-surface px-1 focus:outline-none focus:ring-1 focus:ring-accent/50"
-          />
+          <ColorField bind:value={editingSection.color} label="Section color" block />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Type</span>
