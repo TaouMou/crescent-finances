@@ -6,6 +6,7 @@
   import { summarize } from '$lib/aggregations';
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
+  import { demoMode } from '$lib/stores/demo';
   import { demoCurrency, demoLocale, summary as demoSummary } from '$lib/seed/dashboard';
 
   let { fromStr = '', toStr = '' }: { fromStr?: string; toStr?: string } = $props();
@@ -15,13 +16,14 @@
   const currency = $derived($config?.meta?.currency ?? demoCurrency);
   const locale = $derived($config?.meta?.locale ?? demoLocale);
   const hasData = $derived($txAll.length > 0);
+  const showDemo = $derived($demoMode && !hasData);
 
   const fmt = $derived(
     (n: number, signed = false) => formatMoney(n, { currency, locale, signed })
   );
 
   const agg = $derived.by(() => {
-    if (!hasData) return demoSummary;
+    if (showDemo) return demoSummary;
     return summarize($txAll, fromStr || undefined, toStr || undefined);
   });
 

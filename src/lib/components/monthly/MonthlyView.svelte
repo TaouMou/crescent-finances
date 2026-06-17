@@ -5,6 +5,7 @@
   import { monthlyNets } from '$lib/aggregations';
   import { formatMoney } from '$lib/utils/currency';
   import { cn } from '$lib/utils/cn';
+  import { demoMode } from '$lib/stores/demo';
   import { demoCurrency, demoLocale, demoMonthly } from '$lib/seed/dashboard';
 
   const txAll = transactions.all;
@@ -17,9 +18,10 @@
   const currency = $derived($config?.meta?.currency ?? demoCurrency);
   const locale = $derived($config?.meta?.locale ?? demoLocale);
   const hasData = $derived($txAll.length > 0);
+  const showDemo = $derived($demoMode && !hasData);
 
   const months = $derived.by(() => {
-    if (!hasData) return demoMonthly;
+    if (showDemo) return demoMonthly;
     return [...monthlyNets($txAll)].reverse();
   });
 
@@ -60,6 +62,17 @@
 
   {#if $txLoading}
     <div class="flex h-40 items-center justify-center text-sm text-muted">Decrypting…</div>
+  {:else if months.length === 0}
+    <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/5 py-12 text-center">
+      <p class="text-base font-medium text-ink">No transactions yet</p>
+      <p class="text-sm text-muted">Import a CSV bank export to see your monthly breakdown.</p>
+      <a
+        href="#import"
+        class="press mt-2 flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
+      >
+        Import CSV
+      </a>
+    </div>
   {:else}
     <!-- Summary strip -->
     <div class="card rounded-card grid grid-cols-3 divide-x divide-hairline">

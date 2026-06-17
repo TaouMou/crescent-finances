@@ -3,6 +3,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { demoMode } from '$lib/stores/demo';
   import { vault } from '$lib/stores/vault';
   import { cryptoWorker } from '$lib/workers/cryptoClient';
   import { vaultRepo, transactionRepo, configRepo, dateBucketOf } from '$lib/db/repos';
@@ -301,6 +302,34 @@
         <span class="text-xs text-muted">Locale (BCP-47)</span>
         <input type="text" value={$config?.meta.locale ?? ''} onchange={(e) => setLocale(e.currentTarget.value.trim())} placeholder="en-US" class={inputCls} />
       </label>
+    </div>
+  </Card>
+
+  <!-- Demo data -->
+  <Card>
+    <h2 class="card-title mb-1">Demo data</h2>
+    <p class="mb-4 text-xs text-muted">
+      Shows illustrative sample figures on the Dashboard and Monthly views while you have no
+      transactions imported, so you can see how the app works. Turn this off for a clean,
+      empty workspace — once you import real data it always takes over regardless of this setting.
+    </p>
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-hairline p-3">
+      <div class="min-w-0">
+        <p class="text-sm text-ink">Show sample data when empty</p>
+        <p class="text-xs text-muted">{$demoMode ? 'Sample figures are shown until you import.' : 'Empty states are shown until you import.'}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={$demoMode}
+        aria-label="Show sample data when empty"
+        onclick={() => demoMode.toggle()}
+        class={`press relative h-6 w-11 shrink-0 rounded-full transition-colors ${$demoMode ? 'bg-accent' : 'bg-ink/20'}`}
+      >
+        <span
+          class={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${$demoMode ? 'left-[22px]' : 'left-0.5'}`}
+        ></span>
+      </button>
     </div>
   </Card>
 
