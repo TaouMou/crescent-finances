@@ -73,16 +73,17 @@ export function detectAnomalies(
     const delta = current - med;
 
     if (delta <= 0) continue; // overspend only
+    if (med === 0) continue; // no real baseline → no meaningful comparison
     if (delta < settings.minAbsolute) continue;
-    if (med > 0 && (delta / med) * 100 < settings.thresholdPct) continue;
+    if ((delta / med) * 100 < settings.thresholdPct) continue;
     if (mad > 0 && delta <= settings.madK * mad) continue;
 
-    const deltaPct = med > 0 ? Math.round((delta / med) * 100) : 100;
+    const deltaPct = Math.round((delta / med) * 100);
     const name = catMap.get(categoryId)?.name ?? categoryId;
     flags.push({
       id: `anomaly-${categoryId}`,
       category: name,
-      message: `${name} ${deltaPct}% above your ${settings.baselineMonths}-month norm`,
+      message: `above your ${settings.baselineMonths}-month norm`,
       deltaPct
     });
   }
