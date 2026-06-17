@@ -61,8 +61,8 @@ export interface AnomalyFlag {
 }
 
 export const anomalies: AnomalyFlag[] = [
-  { id: 'a1', category: 'Dining', message: '62% above your 6-month norm', deltaPct: 62 },
-  { id: 'a2', category: 'Transport', message: '38% above your 6-month norm', deltaPct: 38 }
+  { id: 'a1', category: 'Dining', message: 'above your 6-month norm', deltaPct: 62 },
+  { id: 'a2', category: 'Transport', message: 'above your 6-month norm', deltaPct: 38 }
 ];
 
 export type SectionKind = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum' | 'accountBalance';

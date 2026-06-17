@@ -83,7 +83,7 @@ export function detectAnomalies(
     flags.push({
       id: `anomaly-${categoryId}`,
       category: name,
-      message: `${deltaPct}% above your ${settings.baselineMonths}-month norm`,
+      message: `above your ${settings.baselineMonths}-month norm`,
       deltaPct
     });
   }

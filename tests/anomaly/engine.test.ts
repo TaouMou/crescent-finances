@@ -48,7 +48,7 @@ describe('detectAnomalies', () => {
     const flags = detectAnomalies(txs, categories, settings, NOW);
     expect(flags).toHaveLength(1);
     expect(flags[0]).toMatchObject({ id: 'anomaly-dining', category: 'Dining', deltaPct: 100 });
-    expect(flags[0].message).toBe('100% above your 6-month norm');
+    expect(flags[0].message).toBe('above your 6-month norm');
   });
 
   it('does not flag a spike below thresholdPct', () => {
