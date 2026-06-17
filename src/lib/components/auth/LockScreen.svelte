@@ -45,7 +45,7 @@
   }
 </script>
 
-<div class="lock-surface relative flex min-h-screen w-screen items-center justify-center overflow-hidden p-6">
+<div class="lock-surface relative flex min-h-[100dvh] w-screen items-center justify-center overflow-hidden p-6">
   <!-- Atmospheric glow: one large soft accent wash + a fainter neutral bloom. -->
   <div class="glow glow-accent" aria-hidden="true"></div>
   <div class="glow glow-soft" aria-hidden="true"></div>
@@ -178,8 +178,11 @@
     width: 38vmax;
     background: radial-gradient(circle, rgb(var(--c-ink) / 0.06), transparent 70%);
   }
+  :global(.dark) .glow-accent {
+    background: radial-gradient(circle, rgb(var(--c-accent) / 0.35), transparent 70%);
+  }
   :global(.dark) .glow-soft {
-    background: radial-gradient(circle, rgb(255 255 255 / 0.05), transparent 70%);
+    background: radial-gradient(circle, rgb(255 255 255 / 0.12), transparent 70%);
   }
 
   .field-pill {
