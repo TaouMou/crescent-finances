@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Plus, Trash, PencilSimple, Check, X, Play } from 'phosphor-svelte';
+  import { Plus, Trash, PencilSimple, Check, Play } from 'phosphor-svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
   import { cn } from '$lib/utils/cn';
   import type { Rule, RuleMatch } from '$lib/types';
+  import Modal from '$lib/components/ui/Modal.svelte';
 
   let saving = $state(false);
   let applyStatus = $state<string | null>(null);
@@ -22,20 +23,29 @@
 
   let editing = $state<DraftRule | null>(null);
   let editingId = $state<string | null>(null);
+  let modalOpen = $state(false);
+
+  $effect(() => {
+    if (!modalOpen) {
+      editing = null;
+      editingId = null;
+    }
+  });
 
   function startNew() {
     editingId = null;
     editing = blankDraft();
+    modalOpen = true;
   }
 
   function startEdit(rule: Rule) {
     editingId = rule.id;
     editing = { ...rule, addTagIds: [...(rule.addTagIds ?? [])] };
+    modalOpen = true;
   }
 
   function cancelEdit() {
-    editing = null;
-    editingId = null;
+    modalOpen = false;
   }
 
   async function saveRule() {
@@ -54,8 +64,7 @@
     saving = true;
     await config.save({ ...$config, rules });
     saving = false;
-    editing = null;
-    editingId = null;
+    modalOpen = false;
   }
 
   async function deleteRule(id: string) {
@@ -126,10 +135,9 @@
     </div>
   </div>
 
-  <!-- New / edit form -->
-  {#if editing}
-    <div class="rounded-xl border border-accent/30 bg-accent/5 p-5 shadow-sm">
-      <h2 class="mb-4 text-sm font-semibold text-ink">{editingId ? 'Edit rule' : 'New rule'}</h2>
+  <!-- Rule editor modal -->
+  <Modal bind:open={modalOpen} title={editingId ? 'Edit rule' : 'New rule'}>
+    {#if editing}
       <div class="grid gap-4 sm:grid-cols-2">
         <!-- Priority -->
         <label class="flex flex-col gap-1">
@@ -138,7 +146,7 @@
             type="number"
             min="1"
             bind:value={editing.priority}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
 
@@ -147,7 +155,7 @@
           <span class="text-xs text-muted">Match field</span>
           <select
             bind:value={editing.match.field}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <option value="label">Description</option>
             <option value="entity">Entity</option>
@@ -159,7 +167,7 @@
           <span class="text-xs text-muted">Match type</span>
           <select
             bind:value={editing.match.type}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <option value="keyword">Contains keyword</option>
             <option value="regex">Regex pattern</option>
@@ -173,7 +181,7 @@
             type="text"
             bind:value={editing.match.value}
             placeholder={editing.match.type === 'keyword' ? 'e.g. ALDI' : 'e.g. ^NETFLIX'}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
 
@@ -182,7 +190,7 @@
           <span class="text-xs text-muted">Set category</span>
           <select
             bind:value={editing.setCategoryId}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <option value={undefined}>— no change —</option>
             {#each categories as cat (cat.id)}
@@ -198,7 +206,7 @@
             type="text"
             bind:value={editing.setEntity}
             placeholder="e.g. Aldi"
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
       </div>
@@ -215,7 +223,7 @@
           class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10"
           onclick={cancelEdit}
         >
-          <X class="h-4 w-4" /> Cancel
+          Cancel
         </button>
         <button
           class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
@@ -225,11 +233,11 @@
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
-    </div>
-  {/if}
+    {/if}
+  </Modal>
 
   <!-- Rules list -->
-  {#if sortedRules.length === 0 && !editing}
+  {#if sortedRules.length === 0}
     <div class="rounded-xl border border-hairline bg-surface/50 py-16 text-center">
       <p class="text-sm text-muted">No rules yet. Create one to start auto-categorizing transactions.</p>
     </div>
