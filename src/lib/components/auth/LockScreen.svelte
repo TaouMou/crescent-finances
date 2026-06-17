@@ -146,7 +146,7 @@
     </form>
 
     {#if firstRun}
-      <div class="mt-5 flex items-start gap-2 rounded-control border border-warn/30 bg-warn/5 p-3">
+      <div class="warn-panel mt-5 flex items-start gap-2 rounded-control p-3">
         <span class="mt-0.5 text-warn"><Warning size={16} weight="fill" /></span>
         <p class="text-xs leading-relaxed text-muted">
           There is no recovery. If you lose this passphrase, your data cannot be decrypted — not by
@@ -336,5 +336,15 @@
   }
   .submit-btn:disabled {
     cursor: not-allowed;
+  }
+
+  /* Opaque surface (matching the inputs) with the amber tint layered on top, so
+     the recovery warning sits clearly above the bokeh instead of letting the
+     side glows bleed through it. */
+  .warn-panel {
+    background-color: rgb(var(--c-surface));
+    background-image: linear-gradient(rgb(var(--c-warn) / 0.08), rgb(var(--c-warn) / 0.08));
+    border: 1px solid rgb(var(--c-warn) / 0.3);
+    box-shadow: 0 1px 2px rgb(26 29 33 / 0.05);
   }
 </style>
