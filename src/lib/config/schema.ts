@@ -135,7 +135,9 @@ export const importProfileSchema = z.object({
     debit: z.string().optional(),
     credit: z.string().optional(),
     label: z.string(),
-    account: z.string().optional()
+    account: z.string().optional(),
+    category: z.string().optional(),
+    entity: z.string().optional()
   }),
   accountId: z.string().nullable().default(null)
 });

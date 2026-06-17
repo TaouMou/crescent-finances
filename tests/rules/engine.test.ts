@@ -131,4 +131,20 @@ describe('applyRules', () => {
     applyRules([tx], [rule]);
     expect(tx.categoryId).toBeNull();
   });
+
+  it('overrides a bank-seeded category (rules win over imported category)', () => {
+    // Mirrors Boursobank mislabeling a cafeteria lunch as "Santé": the import
+    // seeds categoryId, and the user's rule corrects it on commit.
+    const tx = makeTx({
+      label: 'CARTE 27/05/26 SCHNEIDER PACY 4 CB*5767',
+      normalizedLabel: 'carte 27/05/26 schneider pacy 4 cb*5767',
+      categoryId: 'cat-health'
+    });
+    const rule = makeRule({
+      match: { field: 'label', type: 'keyword', value: 'schneider pacy', caseSensitive: false },
+      setCategoryId: 'cat-dining'
+    });
+    const [result] = applyRules([tx], [rule]);
+    expect(result.categoryId).toBe('cat-dining');
+  });
 });

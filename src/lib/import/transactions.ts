@@ -12,9 +12,12 @@
 import { sha256Hex } from '$lib/crypto/crypto';
 import type { ImportProfileMapping, Transaction } from '$lib/types';
 import {
+  applyLabelCleanup,
   normalizeLabel,
+  normalizeMatchKey,
   parseDateISO,
   resolveAmountCents,
+  type LabelCleanupRule,
   type NumberFormat
 } from './parse';
 
@@ -26,6 +29,16 @@ export interface BuildSettings {
   accountId: string | null;
   source: string;
   importedAt?: string;
+  /**
+   * Resolves a bank's category-column value to an app categoryId, keyed by
+   * `normalizeMatchKey(name)`. Seeds `categoryId`; rules still override at commit.
+   */
+  categoryByName?: Record<string, string>;
+  /**
+   * Regex substitutions applied to the label to derive `entity` when no clean
+   * `entity` column is mapped (e.g. stripping `CARTE …/CB*1234` boilerplate).
+   */
+  labelCleanup?: LabelCleanupRule[];
 }
 
 export interface RowError {
@@ -44,10 +57,14 @@ interface Draft {
   label: string;
   normalizedLabel: string;
   accountId: string | null;
+  categoryId: string | null;
+  entity: string | null;
 }
 
 /** Compute the per-(date,amount,label,account) occurrence index for each draft. */
-export function assignOccurrences(drafts: Draft[]): number[] {
+export function assignOccurrences(
+  drafts: Pick<Draft, 'date' | 'amount' | 'normalizedLabel' | 'accountId'>[]
+): number[] {
   const seen = new Map<string, number>();
   return drafts.map((d) => {
     const key = `${d.date}|${d.amount}|${d.normalizedLabel}|${d.accountId ?? ''}`;
@@ -62,6 +79,8 @@ export async function buildTransactions(
   settings: BuildSettings
 ): Promise<BuildResult> {
   const { mapping, dateFormat, numberFormat, accountId, source } = settings;
+  const categoryByName = settings.categoryByName ?? {};
+  const labelCleanup = settings.labelCleanup ?? [];
   const importedAt = settings.importedAt ?? new Date().toISOString();
 
   const drafts: Draft[] = [];
@@ -81,12 +100,24 @@ export async function buildTransactions(
     }
     const label = (record[mapping.label] ?? '').trim();
     const rowAccount = mapping.account ? (record[mapping.account] ?? '').trim() : '';
+
+    // Seed the category from the bank's own column (rules override at commit).
+    const categoryRaw = mapping.category ? (record[mapping.category] ?? '').trim() : '';
+    const categoryId = categoryRaw ? (categoryByName[normalizeMatchKey(categoryRaw)] ?? null) : null;
+
+    // Prefer an explicit clean-name column; else derive one via label cleanup.
+    const entityRaw = mapping.entity ? (record[mapping.entity] ?? '').trim() : '';
+    const entity =
+      entityRaw || (labelCleanup.length ? applyLabelCleanup(label, labelCleanup) : '') || null;
+
     drafts.push({
       date,
       amount,
       label,
       normalizedLabel: normalizeLabel(label),
-      accountId: rowAccount || accountId
+      accountId: rowAccount || accountId,
+      categoryId,
+      entity
     });
     draftIndex.push(index);
   });
@@ -105,8 +136,8 @@ export async function buildTransactions(
         label: d.label,
         normalizedLabel: d.normalizedLabel,
         accountId: d.accountId,
-        categoryId: null,
-        entity: null,
+        categoryId: d.categoryId,
+        entity: d.entity,
         tagIds: [],
         importedAt,
         source

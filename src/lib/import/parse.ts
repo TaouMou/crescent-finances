@@ -47,37 +47,47 @@ export function parseAmountCents(raw: string, fmt: NumberFormat): number | null 
   return Math.round(value * 100) * sign;
 }
 
-type DatePart = 'dd' | 'MM' | 'yyyy' | 'yy';
+type DatePart = 'dd' | 'MM' | 'yyyy' | 'yy' | 'HH' | 'mm' | 'ss';
 
 /**
- * Parse a date string against a declared format (dd, MM, yyyy, yy tokens with
- * any single-character separators) into an ISO `YYYY-MM-DD` string. Returns null
- * if it doesn't match or the calendar date is invalid.
+ * Parse a date string against a declared format into an ISO `YYYY-MM-DD` string.
+ * Date tokens (`dd`, `MM`, `yyyy`, `yy`) carry the result; time tokens (`HH`,
+ * `mm`, `ss`) are matched and discarded so timestamped exports like Revolut's
+ * `yyyy-MM-dd HH:mm:ss` parse to their calendar date. Any single character
+ * between tokens is treated as a literal separator. Returns null if it doesn't
+ * match or the calendar date is invalid.
  */
 export function parseDateISO(raw: string, format: string): string | null {
   const value = raw.trim();
   if (value === '') return null;
 
-  const tokens = format.match(/dd|MM|yyyy|yy/g) as DatePart[] | null;
+  // Longer tokens first so `yyyy` wins over `yy`.
+  const tokenRe = /yyyy|yy|dd|MM|HH|mm|ss/g;
+  const order: DatePart[] = ['yyyy', 'yy', 'dd', 'MM', 'HH', 'mm', 'ss'];
+  const tokens = format.match(tokenRe) as DatePart[] | null;
   if (!tokens) return null;
-  const seps = format.split(/dd|MM|yyyy|yy/).filter((x, i, a) => !(x === '' && (i === 0 || i === a.length - 1)));
   // Build a regex from the format: each token a digit group, separators literal.
-  const groupFor: Record<DatePart, string> = { dd: '(\\d{1,2})', MM: '(\\d{1,2})', yyyy: '(\\d{4})', yy: '(\\d{2})' };
+  const groupFor: Record<DatePart, string> = {
+    dd: '(\\d{1,2})',
+    MM: '(\\d{1,2})',
+    yyyy: '(\\d{4})',
+    yy: '(\\d{2})',
+    HH: '(\\d{1,2})',
+    mm: '(\\d{1,2})',
+    ss: '(\\d{1,2})'
+  };
   let pattern = '^';
-  let ti = 0;
   for (let i = 0; i < format.length; ) {
-    const tok = (['yyyy', 'yy', 'dd', 'MM'] as DatePart[]).find((t) => format.startsWith(t, i));
+    const tok = order.find((t) => format.startsWith(t, i));
     if (tok) {
       pattern += groupFor[tok];
       i += tok.length;
-      ti++;
     } else {
       pattern += format[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       i++;
     }
   }
   pattern += '$';
-  void seps;
 
   const m = value.match(new RegExp(pattern));
   if (!m) return null;
@@ -91,6 +101,7 @@ export function parseDateISO(raw: string, format: string): string | null {
     else if (tok === 'MM') month = n;
     else if (tok === 'yyyy') year = n;
     else if (tok === 'yy') year = 2000 + n;
+    // HH/mm/ss are consumed by the regex but don't affect the calendar date.
   });
 
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
@@ -104,6 +115,45 @@ export function parseDateISO(raw: string, format: string): string | null {
 /** Normalize a label for fingerprinting/dedup: lowercase, collapse whitespace. */
 export function normalizeLabel(label: string): string {
   return label.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Normalize a name for accent- and case-insensitive matching (e.g. mapping a
+ * bank's "Santé" category onto an app category). Strips diacritics so French
+ * exports line up with plainly-spelled category names.
+ */
+export function normalizeMatchKey(value: string): string {
+  return value
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+export interface LabelCleanupRule {
+  /** Source regex (as a string, so it round-trips through the worker/config). */
+  pattern: string;
+  /** Replacement string (supports `$1` group references). */
+  replacement: string;
+}
+
+/**
+ * Derive a clean merchant name from a noisy bank label by applying an ordered
+ * list of regex substitutions, then collapsing whitespace. Used for banks that
+ * ship no clean-name column (e.g. stripping `CARTE 15/05/26 … CB*5767` down to
+ * the merchant). Invalid patterns are skipped rather than thrown.
+ */
+export function applyLabelCleanup(label: string, rules: LabelCleanupRule[]): string {
+  let out = label;
+  for (const { pattern, replacement } of rules) {
+    try {
+      out = out.replace(new RegExp(pattern, 'gi'), replacement);
+    } catch {
+      // Ignore a malformed rule; leave the label as-is for that step.
+    }
+  }
+  return out.replace(/\s+/g, ' ').trim();
 }
 
 export interface AmountMapping {

@@ -7,6 +7,8 @@
   import { guessMapping, defaultsForDelimiter } from '$lib/import/guess';
   import { applyRules } from '$lib/rules/engine';
   import { suggestCategories } from '$lib/rules/suggest';
+  import { normalizeMatchKey, type LabelCleanupRule } from '$lib/import/parse';
+  import { BANK_PRESETS, findBankPreset } from '$lib/import/bankPresets';
   import type { BuildResult } from '$lib/import/transactions';
   import type { ImportProfile } from '$lib/types';
   import { formatMoney } from '$lib/utils/currency';
@@ -29,10 +31,15 @@
   let mapDebit = $state('');
   let mapCredit = $state('');
   let mapAccountCol = $state('');
+  let mapCategory = $state('');
+  let mapEntity = $state('');
   let defaultAccountId = $state<string | null>(null);
   let dateFormat = $state('dd/MM/yyyy');
   let decimal = $state(',');
   let thousands = $state('.');
+  // Regex cleanup carried in from a bank preset (derives entity from the label).
+  let labelCleanup = $state<LabelCleanupRule[]>([]);
+  let selectedBankKey = $state('');
 
   let preview = $state<BuildResult | null>(null);
   let result = $state<{ added: number; duplicates: number } | null>(null);
@@ -52,6 +59,12 @@
 
   const accounts = $derived($config?.accounts ?? []);
   const profiles = $derived($config?.importProfiles ?? []);
+  // Normalized category-name → id, so a bank's category column can seed categoryId.
+  const categoryByName = $derived.by(() => {
+    const map: Record<string, string> = {};
+    for (const c of $config?.categories ?? []) map[normalizeMatchKey(c.name)] = c.id;
+    return map;
+  });
   const currency = $derived($config?.meta.currency ?? 'EUR');
   const locale = $derived($config?.meta.locale ?? 'en-US');
 
@@ -91,6 +104,10 @@
     mapAmount = g.amount ?? '';
     amountMode = g.debit || g.credit ? 'split' : g.amount ? 'single' : 'split';
     mapAccountCol = '';
+    mapCategory = '';
+    mapEntity = '';
+    labelCleanup = [];
+    selectedBankKey = '';
     defaultAccountId = accounts[0]?.id ?? null;
   }
 
@@ -117,7 +134,9 @@
       date: mapDate,
       label: mapLabel,
       ...(amountMode === 'single' ? { amount: mapAmount } : { debit: mapDebit, credit: mapCredit }),
-      ...(mapAccountCol ? { account: mapAccountCol } : {})
+      ...(mapAccountCol ? { account: mapAccountCol } : {}),
+      ...(mapCategory ? { category: mapCategory } : {}),
+      ...(mapEntity ? { entity: mapEntity } : {})
     };
   }
 
@@ -132,7 +151,9 @@
       dateFormat,
       numberFormat: { decimal, thousands },
       accountId: defaultAccountId,
-      source: 'csv-import'
+      source: 'csv-import',
+      categoryByName,
+      labelCleanup
     });
     await computeSuggestions();
   }
@@ -155,6 +176,7 @@
   function applyProfile(id: string) {
     const p = profiles.find((x) => x.id === id);
     if (!p) return;
+    selectedBankKey = '';
     dateFormat = p.dateFormat;
     decimal = p.decimal;
     thousands = p.thousands;
@@ -164,8 +186,32 @@
     mapDebit = p.mapping.debit ?? '';
     mapCredit = p.mapping.credit ?? '';
     mapAccountCol = p.mapping.account ?? '';
+    mapCategory = p.mapping.category ?? '';
+    mapEntity = p.mapping.entity ?? '';
+    labelCleanup = [];
     amountMode = p.mapping.amount ? 'single' : 'split';
     defaultAccountId = p.accountId;
+    rebuildPreview();
+  }
+
+  /** Apply a built-in bank preset (format + column roles + optional cleanup). */
+  function applyBankPreset(key: string) {
+    const p = findBankPreset(key);
+    if (!p) return;
+    selectedProfileId = '';
+    dateFormat = p.dateFormat;
+    decimal = p.decimal;
+    thousands = p.thousands;
+    mapDate = p.mapping.date;
+    mapLabel = p.mapping.label;
+    mapAmount = p.mapping.amount ?? '';
+    mapDebit = p.mapping.debit ?? '';
+    mapCredit = p.mapping.credit ?? '';
+    mapAccountCol = p.mapping.account ?? '';
+    mapCategory = p.mapping.category ?? '';
+    mapEntity = p.mapping.entity ?? '';
+    labelCleanup = p.labelCleanup ?? [];
+    amountMode = p.mapping.amount ? 'single' : 'split';
     rebuildPreview();
   }
 
@@ -219,6 +265,8 @@
     suggestions = new Map();
     rejected = new Set();
     selectedProfileId = '';
+    selectedBankKey = '';
+    labelCleanup = [];
     saveProfile = false;
     newProfileName = '';
   }
@@ -274,6 +322,20 @@
           {parsed.hasHeader ? 'Has header row' : 'No header row'} · toggle
         </button>
       </div>
+
+      <label class="mb-4 block">
+        <span class="mb-1 block text-xs font-medium text-muted">Bank preset</span>
+        <select
+          class="field"
+          bind:value={selectedBankKey}
+          onchange={() => selectedBankKey && applyBankPreset(selectedBankKey)}
+        >
+          <option value="">Manual / other…</option>
+          {#each BANK_PRESETS as b (b.key)}
+            <option value={b.key} disabled={b.incomplete}>{b.label}</option>
+          {/each}
+        </select>
+      </label>
 
       {#if profiles.length}
         <label class="mb-4 block">
@@ -342,6 +404,20 @@
           <select class="field" bind:value={defaultAccountId} onchange={rebuildPreview}>
             {#if accounts.length === 0}<option value={null}>No accounts yet</option>{/if}
             {#each accounts as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="lbl">Category column <span class="font-normal text-muted/70">(optional)</span></span>
+          <select class="field" bind:value={mapCategory} onchange={rebuildPreview}>
+            <option value="">— none —</option>
+            {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="lbl">Clean-name column <span class="font-normal text-muted/70">(optional)</span></span>
+          <select class="field" bind:value={mapEntity} onchange={rebuildPreview}>
+            <option value="">— none —</option>
+            {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
           </select>
         </label>
         <label class="block">
