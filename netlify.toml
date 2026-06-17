@@ -1,0 +1,25 @@
+# Netlify config — preview deploys for branches/PRs only.
+#
+# This does NOT replace production: the canonical site stays on GitHub Pages
+# (served from main/dev). Netlify exists purely to give every branch and PR its
+# own preview URL, so changes can be reviewed in a browser with no local tooling.
+#
+# The app is a static Vite + Svelte SPA: `npm run build` emits to dist/, and with
+# BASE_PATH unset the base is "/" (root), which is what Netlify serves from.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Match the GitHub Actions deploy (setup-node node-version: 22).
+  NODE_VERSION = "22"
+
+# Hash-based routing means every real URL is "/" with a #fragment, but this
+# catch-all is a safety net so any deep link or refresh still serves the app
+# shell. Static assets are matched first (default, non-forced), so this only
+# applies to otherwise-unmatched paths.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
