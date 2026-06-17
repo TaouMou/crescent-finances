@@ -21,7 +21,7 @@ describe('parseCsv on the shipped sample', () => {
     expect(res.totalRows).toBeGreaterThan(10);
 
     const records = rowsToRecords(res.rows, res.headers);
-    expect(records[0]).toMatchObject({ Date: '03/01/2026', Libelle: 'VIREMENT SALAIRE', Credit: '2450,00' });
+    expect(records[0]).toMatchObject({ Date: '03/12/2025', Libelle: 'VIREMENT SALAIRE', Credit: '2450,00' });
   });
 
   it('honors an explicit latin1 + delimiter override', async () => {

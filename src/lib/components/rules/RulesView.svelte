@@ -243,17 +243,20 @@
           <!-- Toggle -->
           <button
             class={cn(
-              'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-              rule.enabled ? 'bg-accent' : 'bg-ink/20'
+              'group relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-[var(--ease-out)]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
+              rule.enabled ? 'bg-accent' : 'bg-ink/20 hover:bg-ink/25'
             )}
             onclick={() => toggleEnabled(rule)}
             aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'}
+            aria-pressed={rule.enabled}
             title={rule.enabled ? 'Disable' : 'Enable'}
           >
             <span
               class={cn(
-                'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-                rule.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                'absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-out)]',
+                'group-active:scale-90',
+                rule.enabled ? 'translate-x-4' : 'translate-x-0'
               )}
             ></span>
           </button>

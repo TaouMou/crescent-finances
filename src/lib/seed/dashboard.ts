@@ -65,7 +65,7 @@ export const anomalies: AnomalyFlag[] = [
   { id: 'a2', category: 'Transport', message: 'Transport 38% above your 6-month norm', deltaPct: 38 }
 ];
 
-export type SectionKind = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum';
+export type SectionKind = 'percentage' | 'fixed' | 'remainder' | 'target' | 'filterSum' | 'accountBalance';
 
 export interface DistributionSection {
   id: string;

@@ -25,6 +25,14 @@
   const currency = $derived($config?.meta?.currency ?? 'EUR');
   const locale = $derived($config?.meta?.locale ?? 'en-US');
 
+  // Row whose category is being edited inline (by tx id).
+  let editingCatId = $state<string | null>(null);
+
+  function setCategory(txId: string, value: string) {
+    transactions.updateCategory(txId, value || null);
+    editingCatId = null;
+  }
+
   // ----- filters -----
   let query = $state('');
   let filterType = $state<'all' | 'income' | 'expense'>('all');
@@ -237,9 +245,42 @@
                 </p>
               </div>
 
-              <!-- Category (desktop only) -->
+              <!-- Category (desktop only) — click to edit when categories exist -->
               <div class="hidden min-w-0 md:block">
-                {#if cat}
+                {#if editingCatId === tx.id}
+                  <!-- svelte-ignore a11y_autofocus -->
+                  <select
+                    autofocus
+                    class="h-7 w-full rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                    value={tx.categoryId ?? ''}
+                    onchange={(e) => setCategory(tx.id, e.currentTarget.value)}
+                    onblur={() => (editingCatId = null)}
+                  >
+                    <option value="">Uncategorized</option>
+                    {#each $config?.categories ?? [] as c (c.id)}
+                      <option value={c.id}>{c.name}</option>
+                    {/each}
+                  </select>
+                {:else if catMap.size > 0}
+                  <button
+                    type="button"
+                    class="press max-w-full"
+                    title="Change category"
+                    onclick={() => (editingCatId = tx.id)}
+                  >
+                    {#if cat}
+                      <span
+                        class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                        style="background: {cat.color}22; color: {cat.color};"
+                      >
+                        <span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background: {cat.color};"></span>
+                        {cat.name}
+                      </span>
+                    {:else}
+                      <span class="text-xs text-muted/50 hover:text-muted">— set</span>
+                    {/if}
+                  </button>
+                {:else if cat}
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
                     style="background: {cat.color}22; color: {cat.color};"

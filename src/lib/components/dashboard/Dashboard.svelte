@@ -14,6 +14,7 @@
   import { config } from '$lib/stores/config';
   import { categoryBreakdown, dailyCumulative } from '$lib/aggregations';
   import { evaluatePlan } from '$lib/sections/engine';
+  import { detectAnomalies } from '$lib/anomaly/engine';
 
   // ----- data -----
   const txAll = transactions.all;
@@ -63,7 +64,7 @@
 
   // Real plan from config when the user has configured sections; demo otherwise.
   const realPlan = $derived(
-    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll)
+    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
   );
   const realDist = $derived(realPlan.find((g) => g.distribution.sections.length > 0)?.distribution);
   const realTargets = $derived(realPlan.flatMap((g) => g.targets));
@@ -74,6 +75,13 @@
   // Distribution status badge
   const planPctSum = $derived(distribution.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0));
   const planBalanced = $derived(Math.round(planPctSum) === 100);
+
+  // Real anomalies from saved thresholds; demo seed when there's no real data.
+  const anomalySettings = $derived(
+    $config?.settings?.anomaly ?? { baselineMonths: 6, thresholdPct: 40, minAbsolute: 5000, madK: 3 }
+  );
+  const realAnomalies = $derived(detectAnomalies($txAll, categories, anomalySettings));
+  const anomalyData = $derived(hasData ? realAnomalies : anomalies);
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
@@ -165,7 +173,7 @@
           <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
         </div>
-        <AnomaliesList data={anomalies} />
+        <AnomaliesList data={anomalyData} />
       </Card>
     </div>
   </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarize, categoryBreakdown, monthlyNets } from '../../src/lib/aggregations';
+import { summarize, categoryBreakdown, monthlyNets, accountsBalance } from '../../src/lib/aggregations';
 import type { Category, Transaction } from '../../src/lib/types';
 
 function makeTx(overrides: Partial<Transaction> = {}): Transaction {
@@ -24,6 +24,21 @@ const categories: Category[] = [
   { id: 'cat-food', name: 'Food', color: '#11aa77', parentId: null },
   { id: 'cat-rent', name: 'Rent', color: '#334455', parentId: null }
 ];
+
+describe('accountsBalance', () => {
+  it('nets the signed amounts of the named accounts only', () => {
+    const txs = [
+      makeTx({ id: '1', amount: 200_000, accountId: 'a' }),
+      makeTx({ id: '2', amount: -50_000, accountId: 'a' }),
+      makeTx({ id: '3', amount: 99_000, accountId: 'b' }),
+      makeTx({ id: '4', amount: -1000, accountId: null })
+    ];
+    expect(accountsBalance(txs, ['a'])).toBe(150_000);
+    expect(accountsBalance(txs, ['a', 'b'])).toBe(249_000);
+    expect(accountsBalance(txs, [])).toBe(0);
+    expect(accountsBalance(txs, ['nope'])).toBe(0);
+  });
+});
 
 describe('summarize', () => {
   it('separates income and spending', () => {

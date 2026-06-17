@@ -58,7 +58,7 @@ describe('evaluateDistribution', () => {
     expect(dist.source).toBe('Income');
     expect(dist.sections[0].planned).toBe(120_000);
     expect(dist.sections[0].plannedPct).toBe(30);
-    // actual mirrors planned until filterSum lands
+    // percentage sections have no tx linkage, so actual mirrors planned
     expect(dist.sections[0].actual).toBe(120_000);
   });
 
@@ -86,10 +86,24 @@ describe('evaluateDistribution', () => {
     expect(dist.sections[1].planned).toBe(0);
   });
 
-  it('excludes target and accountBalance sections from the distribution bars', () => {
+  it('excludes target sections from the distribution bars', () => {
     const goal = makeSection({ id: 's1', order: 0, calc: { type: 'target', targetAmount: 800_000 } });
     const dist = evaluateDistribution(group, [goal], txs);
     expect(dist.sections).toHaveLength(0);
+  });
+
+  it('accountBalance section shows the linked pool balance', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000, accountId: 'acc1' }),
+      makeTx({ id: 't2', amount: -50_000, accountId: 'acc1' }),
+      makeTx({ id: 't3', amount: -10_000, accountId: 'other' })
+    ];
+    const pools = [{ id: 'pool1', name: 'Cash', accountIds: ['acc1'] }];
+    const sec = makeSection({ id: 's1', name: 'Liquidity', order: 0, calc: { type: 'accountBalance', assetPoolId: 'pool1' } });
+    const dist = evaluateDistribution(group, [sec], data, pools);
+    // 400_000 - 50_000 = 350_000 on acc1 (the 'other' account is not in the pool)
+    expect(dist.sections[0].planned).toBe(350_000);
+    expect(dist.sections[0].actual).toBe(350_000);
   });
 
   it('handles empty config / no income without dividing by zero', () => {
@@ -97,15 +111,68 @@ describe('evaluateDistribution', () => {
     expect(dist.total).toBe(0);
     expect(dist.sections).toEqual([]);
   });
+
+  it('filterSum draws a real actual (abs of matching txs) distinct from planned', () => {
+    // Income 400_000; groceries spending of -8000 across two matching txs.
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000 }),
+      makeTx({ id: 'g1', amount: -5000, categoryId: 'groceries' }),
+      makeTx({ id: 'g2', amount: -3000, categoryId: 'groceries' }),
+      makeTx({ id: 'r1', amount: -100_000, categoryId: 'rent' })
+    ];
+    const tracked = makeSection({
+      id: 's1',
+      name: 'Groceries',
+      order: 0,
+      calc: { type: 'filterSum', filter: { categoryIds: ['groceries'] }, planned: 10_000 }
+    });
+    const dist = evaluateDistribution(group, [tracked], data);
+    expect(dist.sections[0].planned).toBe(10_000);
+    expect(dist.sections[0].actual).toBe(8000);
+  });
+
+  it('filterSum actual is 0 when no transactions match', () => {
+    const tracked = makeSection({
+      id: 's1',
+      order: 0,
+      calc: { type: 'filterSum', filter: { categoryIds: ['nope'] }, planned: 10_000 }
+    });
+    const dist = evaluateDistribution(group, [tracked], txs);
+    expect(dist.sections[0].actual).toBe(0);
+  });
+
+  it('mixed group: percentage mirrors planned, filterSum diverges', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 400_000 }),
+      makeTx({ id: 'g1', amount: -8000, categoryId: 'groceries' })
+    ];
+    const savings = makeSection({ id: 's1', order: 0, calc: { type: 'percentage', of: { kind: 'income' }, percent: 30 } });
+    const tracked = makeSection({ id: 's2', order: 1, calc: { type: 'filterSum', filter: { categoryIds: ['groceries'] }, planned: 10_000 } });
+    const dist = evaluateDistribution(group, [savings, tracked], data);
+    expect(dist.sections[0].actual).toBe(dist.sections[0].planned); // percentage mirrors
+    expect(dist.sections[1].actual).toBe(8000);
+    expect(dist.sections[1].planned).toBe(10_000);
+  });
 });
 
 describe('evaluateTargets', () => {
-  it('extracts target sections with current=0 and the configured target', () => {
+  it('extracts target sections with current=0 when not linked to a pool', () => {
     const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, targetDate: '2026-12-01' } });
     const other = makeSection({ id: 's1', order: 1, calc: { type: 'fixed', amount: 1 } });
     const targets = evaluateTargets([goal, other]);
     expect(targets).toHaveLength(1);
     expect(targets[0]).toMatchObject({ id: 't1', name: 'Emergency fund', current: 0, target: 800_000, targetDate: '2026-12-01' });
+  });
+
+  it('reads current from the linked asset pool balance', () => {
+    const data: Transaction[] = [
+      makeTx({ amount: 500_000, accountId: 'sav' }),
+      makeTx({ id: 'x', amount: -40_000, accountId: 'sav' })
+    ];
+    const pools = [{ id: 'pool1', name: 'Savings', accountIds: ['sav'] }];
+    const goal = makeSection({ id: 't1', name: 'Emergency fund', order: 0, calc: { type: 'target', targetAmount: 800_000, assetPoolId: 'pool1' } });
+    const targets = evaluateTargets([goal], data, pools);
+    expect(targets[0].current).toBe(460_000); // 500_000 - 40_000
   });
 });
 
