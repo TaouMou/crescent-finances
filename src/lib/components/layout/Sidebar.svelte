@@ -112,7 +112,7 @@
           class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           onclick={requestNewGroup}
         >
-          <span class="truncate">+ New group</span>
+          <span class="truncate">+ New budget</span>
         </button>
       </div>
     {/if}

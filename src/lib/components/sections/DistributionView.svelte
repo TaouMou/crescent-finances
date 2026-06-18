@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Funnel } from 'phosphor-svelte';
+  import { Funnel, PencilSimple, Trash } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup, DistributionSection } from '$lib/seed/dashboard';
 
@@ -7,13 +7,19 @@
     group,
     currency = 'EUR',
     locale = 'en-US',
-    filterDescriptions = {}
+    filterDescriptions = {},
+    onEdit,
+    onDelete
   }: {
     group: DistributionGroup;
     currency?: string;
     locale?: string;
     /** Optional map of section id → human-readable filter label for filterSum sections. */
     filterDescriptions?: Record<string, string>;
+    /** When provided, each row shows an edit button wired to the section id. */
+    onEdit?: (id: string) => void;
+    /** When provided, each row shows a delete button wired to the section id. */
+    onDelete?: (id: string) => void;
   } = $props();
 
   const fmt = (n: number) => formatMoney(n, { currency, locale });
@@ -73,9 +79,25 @@
             <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${s.color}`}></span>
             <span class="truncate text-sm text-ink">{s.name}</span>
           </div>
-          <div class="flex shrink-0 items-baseline gap-2">
-            <span class="tnum text-sm text-ink">{fmt(s.actual)}</span>
-            <span class={`tnum text-xs ${m.tone}`}>{m.label}</span>
+          <div class="flex shrink-0 items-center gap-2">
+            <div class="flex items-baseline gap-2">
+              <span class="tnum text-sm text-ink">{fmt(s.actual)}</span>
+              <span class={`tnum text-xs ${m.tone}`}>{m.label}</span>
+            </div>
+            {#if onEdit || onDelete}
+              <div class="-my-1 flex items-center gap-0.5">
+                {#if onEdit}
+                  <button class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => onEdit?.(s.id)} title="Edit bucket">
+                    <PencilSimple class="h-3.5 w-3.5" />
+                  </button>
+                {/if}
+                {#if onDelete}
+                  <button class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => onDelete?.(s.id)} title="Delete bucket">
+                    <Trash class="h-3.5 w-3.5" />
+                  </button>
+                {/if}
+              </div>
+            {/if}
           </div>
         </div>
 
