@@ -14,8 +14,7 @@ import {
   decryptJson,
   makeVerifier,
   randomSalt,
-  toBase64,
-  type EncryptedBlob
+  toBase64
 } from '../../src/lib/crypto/crypto';
 import type { Transaction } from '../../src/lib/types';
 import exampleConfig from '../../public/example.config.json';
