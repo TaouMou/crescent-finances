@@ -76,8 +76,6 @@
       radial-gradient(70% 180% at 92% 0%, rgb(var(--c-expense) / 0.7), transparent 72%);
     filter: blur(18px);
     opacity: 0.55;
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 92%);
-    mask-image: linear-gradient(to bottom, black 0%, transparent 92%);
   }
   .dark .topbar-aurora {
     opacity: 0.8;
