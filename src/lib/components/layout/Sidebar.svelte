@@ -71,7 +71,7 @@
     </button>
   </div>
 
-  <nav class="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-1">
+  <nav class="flex-1 touch-pan-y space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-1">
     {#each nav as item (item.id)}
       <a
         href={`#${item.id}`}
