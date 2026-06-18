@@ -14,7 +14,7 @@
     steps,
     showDemo = false,
     ondismiss
-  }: { steps: SetupStep[]; showDemo?: boolean; ondismiss: () => void } = $props();
+  }: { steps: SetupStep[]; showDemo?: boolean; ondismiss?: () => void } = $props();
 
   const done = $derived(steps.filter((s) => s.done).length);
   const pct = $derived(steps.length ? Math.round((done / steps.length) * 100) : 0);
@@ -30,14 +30,16 @@
         {#if showDemo}Showing sample figures — {/if}a few steps to make the dashboard reflect your real money.
       </p>
     </div>
-    <button
-      type="button"
-      onclick={ondismiss}
-      aria-label="Dismiss setup checklist"
-      class="press grid h-7 w-7 shrink-0 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink"
-    >
-      <X class="h-4 w-4" />
-    </button>
+    {#if ondismiss}
+      <button
+        type="button"
+        onclick={ondismiss}
+        aria-label="Dismiss setup checklist"
+        class="press grid h-7 w-7 shrink-0 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink"
+      >
+        <X class="h-4 w-4" />
+      </button>
+    {/if}
   </div>
 
   <div class="mb-4 flex items-center gap-3">

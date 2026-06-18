@@ -12,6 +12,7 @@
   import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
   import PlanView from '$lib/components/plan/PlanView.svelte';
   import SettingsView from '$lib/components/settings/SettingsView.svelte';
+  import StartView from '$lib/components/start/StartView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -48,6 +49,7 @@
   }
 
   const titles: Record<string, string> = {
+    start: 'Getting started',
     dashboard: 'Dashboard',
     import: 'Import',
     transactions: 'Transactions',
@@ -81,16 +83,37 @@
   });
 
   // Load config + transactions once unlocked; reset cache on lock.
+  // On the very first unlock on this device, send the user to the Getting-started
+  // page once (tracked in localStorage). It stays reachable from the sidebar after.
+  let onboardChecked = false;
   $effect(() => {
     if (status === 'unlocked') {
       config.load();
       transactions.loadAll();
       balances.load();
+      if (!onboardChecked) {
+        onboardChecked = true;
+        maybeRedirectToStart();
+      }
     } else if (status === 'locked') {
       transactions.reset();
       balances.reset();
     }
   });
+
+  function maybeRedirectToStart() {
+    try {
+      if (localStorage.getItem('crescent.onboarded') === '1') return;
+      // Mark immediately so we only ever auto-redirect once, never in a loop.
+      localStorage.setItem('crescent.onboarded', '1');
+    } catch {
+      return; // storage disabled — don't auto-redirect
+    }
+    // Only when landing on the default route; respect any explicit deep link.
+    if (currentRoute() === 'dashboard') {
+      location.hash = 'start';
+    }
+  }
 </script>
 
 {#if status === 'loading'}
@@ -140,7 +163,9 @@
         class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
-        {#if route === 'import'}
+        {#if route === 'start'}
+          <StartView />
+        {:else if route === 'import'}
           <ImportView />
         {:else if route === 'transactions'}
           <TransactionsView />

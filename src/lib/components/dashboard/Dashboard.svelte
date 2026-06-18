@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { Check, Info } from 'phosphor-svelte';
+  import { Check, Info, ArrowUpRight, Compass } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import SummaryCards from './SummaryCards.svelte';
-  import SetupChecklist from './SetupChecklist.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
   import IncomeVsSpending from '$lib/components/charts/IncomeVsSpending.svelte';
@@ -46,40 +44,6 @@
   // there's no real data yet. All panels honour this single flag, so the
   // dashboard is either fully demo or fully real — never a confusing mix.
   const showDemo = $derived($demoMode && !hasData);
-
-  // ----- setup checklist (onboarding) -----
-  const SETUP_DISMISSED_KEY = 'crescent.setupDismissed';
-  let dismissed = $state(false);
-  onMount(() => {
-    try {
-      dismissed = localStorage.getItem(SETUP_DISMISSED_KEY) === '1';
-    } catch {
-      /* storage disabled — show by default */
-    }
-  });
-  function dismissSetup() {
-    dismissed = true;
-    try {
-      localStorage.setItem(SETUP_DISMISSED_KEY, '1');
-    } catch {
-      /* best-effort */
-    }
-  }
-
-  const hasBalance = $derived(Object.keys($balances).length > 0);
-  const hasPlan = $derived(
-    ($config?.sectionGroups?.length ?? 0) > 0 && ($config?.sections?.length ?? 0) > 0
-  );
-  const hasGoal = $derived(($config?.sections ?? []).some((s) => s.calc?.type === 'target'));
-
-  const setupSteps = $derived([
-    { key: 'import', label: 'Import your transactions', hint: 'Bring in a CSV bank export.', href: '#import', done: hasData },
-    { key: 'balance', label: 'Set your starting balance', hint: 'So Liquid balance shows the real money in your accounts.', href: '#settings', done: hasBalance },
-    { key: 'plan', label: 'Set up a monthly plan', hint: 'Split your income into sections.', href: '#plan', done: hasPlan },
-    { key: 'goal', label: 'Add a savings goal', hint: 'Track progress toward a target.', href: '#plan', done: hasGoal }
-  ]);
-  const setupComplete = $derived(setupSteps.every((s) => s.done));
-  const showSetup = $derived(!setupComplete && !dismissed && !$txLoading);
 
   // ----- chart date range (lifted to App.svelte, received as bindable props) -----
   const _today = new Date();
@@ -143,8 +107,33 @@
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
   <SummaryCards {fromStr} {toStr} />
 
-  {#if showSetup}
-    <SetupChecklist steps={setupSteps} {showDemo} ondismiss={dismissSetup} />
+  {#if !hasData && !$txLoading}
+    <Card class="ring-1 ring-accent/15">
+      <div class="flex flex-col items-center gap-2 py-6 text-center">
+        <p class="text-base font-medium text-ink">
+          {showDemo ? 'Showing sample data' : 'No transactions yet'}
+        </p>
+        <p class="max-w-md text-sm text-muted">
+          {showDemo
+            ? 'These are illustrative figures. Import a CSV bank export to replace them with your own.'
+            : 'Import a CSV bank export to see your real numbers here.'}
+        </p>
+        <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="#import"
+            class="press flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90"
+          >
+            <ArrowUpRight class="h-4 w-4" /> Import CSV
+          </a>
+          <a
+            href="#start"
+            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-4 text-sm font-medium text-ink hover:bg-ink/5"
+          >
+            <Compass class="h-4 w-4" /> New here? Start guide
+          </a>
+        </div>
+      </div>
+    </Card>
   {/if}
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
