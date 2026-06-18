@@ -13,7 +13,7 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { slide, fade } from 'svelte/transition';
+  import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -22,13 +22,9 @@
 
   let {
     active = 'dashboard',
-    collapsed = $bindable(false),
-    fullWidth = false,
     onClose
   }: {
     active?: string;
-    collapsed?: boolean;
-    fullWidth?: boolean;
     onClose?: () => void;
   } = $props();
 
@@ -58,28 +54,21 @@
   ];
 </script>
 
-<aside
-  class={cn(
-    'flex h-full flex-col border-r border-hairline bg-paper transition-[width] duration-200 ease-out',
-    fullWidth ? 'w-screen' : collapsed ? 'w-[64px]' : 'w-[248px]'
-  )}
->
-  <div class="flex h-14 touch-none items-center gap-2.5 px-4">
-    <div class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
-      <span class="text-sm font-medium">◐</span>
-    </div>
-    {#if !collapsed}
+<aside class="flex h-full w-[280px] flex-col border-r border-hairline bg-paper">
+  <div class="flex h-14 touch-none items-center justify-between gap-2.5 px-4">
+    <div class="flex items-center gap-2.5">
+      <div class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
+        <span class="text-sm font-medium">◐</span>
+      </div>
       <span class="truncate text-sm font-medium text-ink">Crescent</span>
-    {/if}
-    {#if fullWidth}
-      <button
-        class="press ml-auto grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        onclick={() => onClose?.()}
-        aria-label="Close menu"
-      >
-        <X class="h-5 w-5" />
-      </button>
-    {/if}
+    </div>
+    <button
+      class="press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      onclick={() => onClose?.()}
+      aria-label="Close sidebar"
+    >
+      <X class="h-5 w-5" />
+    </button>
   </div>
 
   <nav class="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-1">
@@ -94,7 +83,7 @@
         onclick={() => onClose?.()}
       >
         <item.icon class="h-[18px] w-[18px] shrink-0" />
-        {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{item.label}</span>{/if}
+        <span class="truncate">{item.label}</span>
       </a>
     {/each}
 
@@ -105,12 +94,10 @@
       title="Plan"
     >
       <ChartPieSlice class="h-[18px] w-[18px] shrink-0" />
-      {#if !collapsed}
-        <span class="truncate" transition:fade={{ duration: 150 }}>Plan</span>
-        <span transition:fade={{ duration: 150 }}><CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} /></span>
-      {/if}
+      <span class="truncate">Plan</span>
+      <CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} />
     </button>
-    {#if planOpen && !collapsed}
+    {#if planOpen}
       <div class="space-y-0.5 pb-1" transition:slide={{ duration: 180 }}>
         {#each planGroups as g (g.key)}
           <a
@@ -131,8 +118,7 @@
     {/if}
   </nav>
 
-  <!-- Footer actions: same row layout as nav, so collapsing only hides labels
-       (never changes the footer height or shifts the buttons). -->
+  <!-- Footer actions -->
   <div class="touch-none space-y-0.5 px-2.5 py-2">
     {#each footerNav as item (item.id)}
       <a
@@ -145,7 +131,7 @@
         onclick={() => onClose?.()}
       >
         <item.icon class="h-[18px] w-[18px] shrink-0" />
-        {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{item.label}</span>{/if}
+        <span class="truncate">{item.label}</span>
       </a>
     {/each}
     <button
@@ -159,7 +145,7 @@
       {:else}
         <Moon class="h-[18px] w-[18px] shrink-0" />
       {/if}
-      {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>{$theme === 'dark' ? 'Light' : 'Dark'}</span>{/if}
+      <span class="truncate">{$theme === 'dark' ? 'Light' : 'Dark'}</span>
     </button>
     <button
       class="press flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
@@ -168,25 +154,7 @@
       aria-label="Lock"
     >
       <Lock class="h-[18px] w-[18px] shrink-0" />
-      {#if !collapsed}<span class="truncate" transition:fade={{ duration: 150 }}>Lock</span>{/if}
+      <span class="truncate">Lock</span>
     </button>
   </div>
-
-  {#if !fullWidth}
-    <!-- Collapse toggle: a fixed single-row bar; only the icon's alignment
-         changes between states, so nothing above it ever moves. -->
-    <div class="flex touch-none border-t border-hairline px-2.5 py-2">
-      <button
-        class={cn(
-          'press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-          collapsed ? 'mx-auto' : 'ml-auto'
-        )}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        onclick={() => (collapsed = !collapsed)}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        <CaretRight class={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
-      </button>
-    </div>
-  {/if}
 </aside>
