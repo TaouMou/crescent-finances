@@ -487,6 +487,10 @@
           </select>
         </label>
         <p class="text-xs text-muted sm:col-span-2 -mt-2">{calcTypeHint(editingSection.calcType)}</p>
+        <p class="text-xs text-muted/80 sm:col-span-2 -mt-2">
+          “Allocate income” buckets are amounts you plan; “Track actuals” buckets are measured from
+          your real transactions.
+        </p>
         {#if (editingSection.calcType === 'percentage' || editingSection.calcType === 'remainder') && !hasIncome}
           <p class="text-xs text-warn sm:col-span-2 -mt-2">
             No income imported yet — this bucket will show 0 until you import transactions with income.
@@ -524,6 +528,11 @@
                 <option value={p.id}>{p.name}</option>
               {/each}
             </select>
+            <span class="text-xs text-muted">
+              Progress is read automatically from the linked pool's balance — there's no manual
+              "I saved €X" entry. To track a goal, link a pool (set one up in Settings); otherwise
+              it just shows the target.
+            </span>
           </label>
         {:else if editingSection.calcType === 'accountBalance'}
           <label class="flex flex-col gap-1 sm:col-span-2">

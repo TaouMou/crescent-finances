@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Funnel, PencilSimple, Trash } from 'phosphor-svelte';
+  import { Funnel, PencilSimple, Trash, Info } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup, DistributionSection } from '$lib/seed/dashboard';
 
@@ -48,7 +48,15 @@
 
 <div class="space-y-5">
   <div class="space-y-1">
-    <p class="text-sm text-muted">Source · {group.source}</p>
+    <p class="flex items-center gap-1 text-sm text-muted">
+      {group.source} this period
+      <span
+        class="inline-flex cursor-help text-muted/70"
+        title="Your imported income for the selected period — the amount divided across the buckets below."
+      >
+        <Info class="h-3.5 w-3.5 shrink-0" />
+      </span>
+    </p>
     <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
   </div>
 

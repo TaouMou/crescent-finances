@@ -215,7 +215,8 @@
           <h2 class="card-title">{distribution?.name ?? 'Monthly plan'}</h2>
           {#if distribution}
             <span
-              class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
+              title="Counts the share of income assigned across your percentage buckets. A 'remainder' bucket fills whatever is left, so the plan reaches 100%."
+              class={`inline-flex shrink-0 cursor-help items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
                 planBalanced
                   ? 'border-income/30 bg-income/10 text-income'
                   : 'border-warn/30 bg-warn/10 text-warn'
@@ -255,10 +256,14 @@
       </Card>
 
       <Card>
-        <div class="mb-4 flex items-baseline justify-between">
+        <div class="mb-1 flex items-baseline justify-between">
           <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
         </div>
+        <p class="mb-4 text-xs text-muted">
+          Categories spending unusually more than your last {anomalySettings.baselineMonths} months. Open the
+          help panel for how this is measured.
+        </p>
         <AnomaliesList data={anomalyData} />
       </Card>
     </div>
