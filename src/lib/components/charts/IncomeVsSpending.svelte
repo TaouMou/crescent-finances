@@ -7,13 +7,13 @@
     data,
     currency = 'EUR',
     locale = 'en-US',
-    height = 220
+    height = 260
   }: { data: MonthlyNet[]; currency?: string; locale?: string; height?: number } = $props();
 
   let container: HTMLDivElement;
   let width = $state(0);
 
-  const PAD = { top: 12, right: 8, bottom: 30, left: 60 };
+  const PAD = { top: 12, right: 8, bottom: 34, left: 60 };
 
   const maxVal = $derived(Math.max(...data.flatMap((d) => [d.income, d.spending]), 1));
   const plotW = $derived(width - PAD.left - PAD.right);
@@ -25,6 +25,9 @@
   const barW = $derived(Math.min(50, Math.max(3, (groupW * 0.72) / 2)));
   const innerGap = $derived(groupW * 0.06);
   const groupInset = $derived((groupW - barW * 2 - innerGap) / 2);
+  // Skip x-axis labels when groups are too narrow to fit them without overlapping.
+  // ~34px is enough room for a 3-char month abbreviation at 11px with a small gap.
+  const labelEvery = $derived(Math.max(1, Math.ceil(34 / groupW)));
 
   function ix(i: number): number {
     return PAD.left + i * groupW + groupInset;
@@ -93,14 +96,16 @@
       {#each data as d, i}
         <rect x={ix(i)} y={toY(d.income)} width={barW} height={bh(d.income)} rx="3" class="bar-income" />
         <rect x={sx(i)} y={toY(d.spending)} width={barW} height={bh(d.spending)} rx="3" class="bar-expense" />
-        <text
-          x={PAD.left + i * groupW + groupW / 2}
-          y={height - 6}
-          text-anchor="middle"
-          class="axis-lbl"
-        >
-          {monthLabel(d.bucket)}
-        </text>
+        {#if i % labelEvery === 0}
+          <text
+            x={PAD.left + i * groupW + groupW / 2}
+            y={height - 6}
+            text-anchor="middle"
+            class="axis-lbl"
+          >
+            {monthLabel(d.bucket)}
+          </text>
+        {/if}
       {/each}
     </svg>
   {/if}
