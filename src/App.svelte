@@ -4,6 +4,7 @@
   import { cubicOut } from 'svelte/easing';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
+  import RightSidebar from '$lib/components/layout/RightSidebar.svelte';
   import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
   import ImportView from '$lib/components/import/ImportView.svelte';
   import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
@@ -15,9 +16,25 @@
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
 
-  let collapsed = $state(false);
-  let mobileOpen = $state(false);
+  let sidebarOpen = $state(false);
+  let rightOpen = $state(false);
+
+  // Date range state for the dashboard (shared with Topbar and Dashboard)
+  const _today = new Date();
+  const _aYearAgo = new Date(_today);
+  _aYearAgo.setFullYear(_today.getFullYear() - 1);
+  let fromStr = $state(toISODate(_aYearAgo));
+  let toStr = $state(toISODate(_today));
+
+  const spanLabel = $derived.by(() => {
+    const fromDate = new Date(`${fromStr}T00:00:00`);
+    const toDate = new Date(`${toStr}T23:59:59`);
+    const { months, days } = monthsDaysBetween(fromDate, toDate);
+    const span = formatSpan(months, days);
+    return isSameDay(toDate, _today) ? `Last ${span}` : span;
+  });
 
   const status = $derived($vault.status);
   const devBypass = import.meta.env.VITE_DEV_BYPASS === 'true';
@@ -83,33 +100,41 @@
   <LockScreen />
 {:else}
   <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
-    <!-- Desktop sidebar (in flow) -->
-    <div class="hidden md:block">
-      <Sidebar active={route} bind:collapsed />
-    </div>
-
-    <!-- Mobile drawer (full-width overlay) -->
-    {#if mobileOpen}
-      <!-- Backdrop -->
+    <!-- Left sidebar overlay -->
+    {#if sidebarOpen}
       <button
-        class="fixed inset-0 z-40 w-full bg-ink/40 md:hidden"
+        class="fixed inset-0 z-40 w-full bg-black/40"
         transition:fade={{ duration: 200 }}
-        onclick={() => (mobileOpen = false)}
+        onclick={() => (sidebarOpen = false)}
         aria-label="Close menu"
       ></button>
-      <!-- Drawer -->
       <div
-        class="fixed inset-y-0 left-0 z-50 w-[280px] overscroll-contain md:hidden"
+        class="fixed inset-y-0 left-0 z-50 overscroll-contain"
         transition:fly={{ x: -280, duration: 250, easing: cubicOut }}
       >
-        <Sidebar active={route} fullWidth onClose={() => (mobileOpen = false)} />
+        <Sidebar active={route} onClose={() => (sidebarOpen = false)} />
       </div>
     {/if}
 
+    <!-- Right sidebar overlay -->
+    {#if rightOpen}
+      <RightSidebar
+        {route}
+        bind:fromStr
+        bind:toStr
+        {spanLabel}
+        onClose={() => (rightOpen = false)}
+      />
+    {/if}
+
     <div class="flex min-w-0 flex-1 flex-col">
-      <Topbar {title} period="June 2026" onMenu={() => (mobileOpen = true)} />
+      <Topbar
+        {title}
+        onMenu={() => (sidebarOpen = true)}
+        onPanel={() => (rightOpen = !rightOpen)}
+      />
       <main
-        class={`flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${mobileOpen ? 'overflow-hidden' : ''}`}
+        class={`flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
         {#if route === 'import'}
@@ -125,7 +150,7 @@
         {:else if route === 'settings'}
           <SettingsView />
         {:else}
-          <Dashboard />
+          <Dashboard bind:fromStr bind:toStr {spanLabel} />
         {/if}
       </main>
     </div>
