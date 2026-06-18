@@ -5,7 +5,8 @@
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
-  import NetOverTime from '$lib/components/charts/NetOverTime.svelte';
+  import IncomeVsSpending from '$lib/components/charts/IncomeVsSpending.svelte';
+  import SavingsRate from '$lib/components/charts/SavingsRate.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
   import {
@@ -13,7 +14,7 @@
     distribution as demoDistribution,
     targets as demoTargets,
     spendingByCategory as demoSpending,
-    netSeries as demoNetSeries,
+    demoMonthly,
     demoCurrency,
     demoLocale
   } from '$lib/seed/dashboard';
@@ -21,7 +22,7 @@
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
   import { demoMode } from '$lib/stores/demo';
-  import { categoryBreakdown, dailyCumulative } from '$lib/aggregations';
+  import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
   import { evaluatePlan } from '$lib/sections/engine';
   import { detectAnomalies } from '$lib/anomaly/engine';
 
@@ -43,7 +44,7 @@
   // dashboard is either fully demo or fully real — never a confusing mix.
   const showDemo = $derived($demoMode && !hasData);
 
-  // ----- net-over-time chart -----
+  // ----- chart date range -----
   const today = new Date();
   const aYearAgo = new Date(today);
   aYearAgo.setFullYear(today.getFullYear() - 1);
@@ -54,22 +55,25 @@
   const fromDate = $derived(new Date(`${fromStr}T00:00:00`));
   const toDate = $derived(new Date(`${toStr}T23:59:59`));
 
-  // Epoch-second bounds (UTC, matching the chart's point timestamps) so the
-  // Net-over-time chart always spans exactly the picked window — not just the
-  // extent of the available data points.
-  const xMin = $derived(Math.floor(new Date(`${fromStr}T00:00:00Z`).getTime() / 1000));
-  const xMax = $derived(Math.floor(new Date(`${toStr}T23:59:59Z`).getTime() / 1000));
-
   const spanLabel = $derived.by(() => {
     const { months, days } = monthsDaysBetween(fromDate, toDate);
     const span = formatSpan(months, days);
     return isSameDay(toDate, today) ? `Last ${span}` : span;
   });
 
-  // Daily cumulative net series (epoch-seconds + value) for uPlot
-  const netSeries = $derived.by(() =>
-    showDemo ? demoNetSeries : dailyCumulative($txAll, fromStr, toStr)
-  );
+  // Monthly buckets for income/spending bars and savings-rate line
+  const monthlyData = $derived.by(() => {
+    const from = fromStr.slice(0, 7);
+    const to = toStr.slice(0, 7);
+    if (showDemo) return demoMonthly.filter((m) => m.bucket >= from && m.bucket <= to);
+    return monthlyNets($txAll).filter((m) => m.bucket >= from && m.bucket <= to);
+  });
+
+  const avgSavingsRate = $derived.by(() => {
+    const months = monthlyData.filter((m) => m.income > 0);
+    if (months.length === 0) return null;
+    return Math.round((months.reduce((s, m) => s + m.net / m.income, 0) / months.length) * 100);
+  });
 
   // Spending by category for current period
   const catSpend = $derived.by(() => {
@@ -128,7 +132,17 @@
     <div class="space-y-5 lg:col-span-2">
       <Card>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 class="card-title">Net over time</h2>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <h2 class="card-title">Income vs Spending</h2>
+            <div class="flex items-center gap-3 text-xs text-muted">
+              <span class="flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-[3px] bg-income"></span>Income
+              </span>
+              <span class="flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-[3px] bg-expense"></span>Spending
+              </span>
+            </div>
+          </div>
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <DateField bind:value={fromStr} max={toStr} label="Start date" />
             <span class="text-muted">–</span>
@@ -136,12 +150,33 @@
             <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
           </div>
         </div>
-        {#if netSeries.length === 0}
+        {#if monthlyData.length === 0}
           <div class="flex h-32 items-center justify-center text-sm text-muted">
             {$txLoading ? 'Loading…' : 'No data for this period'}
           </div>
         {:else}
-          <NetOverTime data={netSeries} {currency} {locale} {xMin} {xMax} />
+          <IncomeVsSpending data={monthlyData} {currency} {locale} />
+        {/if}
+      </Card>
+
+      <Card>
+        <div class="mb-4 flex items-baseline justify-between">
+          <h2 class="card-title">Savings rate</h2>
+          <div class="flex items-center gap-2">
+            {#if avgSavingsRate !== null}
+              <span class={`text-sm font-medium tabular-nums ${avgSavingsRate >= 0 ? 'text-income' : 'text-expense'}`}>
+                avg {avgSavingsRate}%
+              </span>
+            {/if}
+            <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
+          </div>
+        </div>
+        {#if monthlyData.length === 0}
+          <div class="flex h-24 items-center justify-center text-sm text-muted">
+            {$txLoading ? 'Loading…' : 'No data for this period'}
+          </div>
+        {:else}
+          <SavingsRate data={monthlyData} />
         {/if}
       </Card>
 
