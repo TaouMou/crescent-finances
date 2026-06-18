@@ -3,6 +3,8 @@
   import { cubicOut } from 'svelte/easing';
   import { X } from 'phosphor-svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
+  import HelpPanel from './HelpPanel.svelte';
+  import { pageHelp } from '$lib/help/registry';
   import { toISODate } from '$lib/utils/dates';
 
   let {
@@ -40,6 +42,9 @@
     { label: 'Last year', action: () => setPreset(365) },
     { label: 'Year to date', action: () => setYearToDate() }
   ];
+
+  const help = $derived(pageHelp[route]);
+  const headerLabel = $derived(route === 'dashboard' ? 'Filters' : help ? 'Help' : 'Details');
 </script>
 
 <!-- Backdrop -->
@@ -57,9 +62,7 @@
 >
   <!-- Header -->
   <div class="flex h-14 shrink-0 items-center justify-between border-b border-hairline px-4">
-    <span class="text-sm font-medium text-ink">
-      {route === 'dashboard' ? 'Filters' : 'Details'}
-    </span>
+    <span class="text-sm font-medium text-ink">{headerLabel}</span>
     <button
       class="press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
       onclick={() => onClose?.()}
@@ -97,6 +100,14 @@
           <p class="mt-2 text-xs text-muted">{spanLabel}</p>
         {/if}
       </div>
+
+      {#if help}
+        <div class="mt-6 border-t border-hairline pt-4">
+          <HelpPanel {help} />
+        </div>
+      {/if}
+    {:else if help}
+      <HelpPanel {help} />
     {:else}
       <p class="text-sm text-muted">No details available for this page.</p>
     {/if}
