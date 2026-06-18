@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Plus, Trash, PencilSimple, Check, X, Target } from 'phosphor-svelte';
+  import { Plus, Trash, PencilSimple, Check, X, Target, CaretLeft, CaretRight } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
@@ -13,6 +13,8 @@
   import { nextOccurrence } from '$lib/sections/schedule';
   import { safeParseConfig } from '$lib/config/schema';
   import { demoCurrency, demoLocale } from '$lib/seed/dashboard';
+  import { monthKey, currentMonth, monthBounds, formatMonthLabel } from '$lib/utils/dates';
+  import { describeFilter } from '$lib/utils/filterDescription';
   import type { Schedule, Section, SectionCalc, SectionGroup, SectionGroupKind, TransactionFilter } from '$lib/types';
 
   const txAll = transactions.all;
@@ -20,9 +22,40 @@
   const currency = $derived($config?.meta?.currency ?? demoCurrency);
   const locale = $derived($config?.meta?.locale ?? demoLocale);
 
+  // ----- month selection -----
+  let selectedMonth = $state(currentMonth());
+  const planBounds = $derived(monthBounds(selectedMonth));
+
+  function prevMonth() {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    selectedMonth = monthKey(new Date(y, m - 2, 1));
+  }
+  function nextMonth() {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    selectedMonth = monthKey(new Date(y, m, 1));
+  }
+
   const evaluated = $derived(
-    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
+    evaluatePlan(
+      $config?.sectionGroups ?? [],
+      $config?.sections ?? [],
+      $txAll,
+      $config?.assetPools ?? [],
+      planBounds.from,
+      planBounds.to
+    )
   );
+
+  const filterDescriptions = $derived.by(() => {
+    const result: Record<string, string> = {};
+    if (!$config) return result;
+    for (const s of $config.sections) {
+      if (s.calc.type === 'filterSum') {
+        result[s.id] = describeFilter(s.calc.filter, $config!);
+      }
+    }
+    return result;
+  });
 
   let saving = $state(false);
 
@@ -312,12 +345,34 @@
         Add a <em>tracked spending</em> section to see real actuals from your transactions.
       </p>
     </div>
-    <button
-      class="press flex h-9 items-center gap-2 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-      onclick={newGroup}
-    >
-      <Plus class="h-4 w-4" /> New group
-    </button>
+    <div class="flex items-center justify-between gap-4">
+      <!-- Month picker -->
+      <div class="flex items-center gap-1">
+        <button
+          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+          onclick={prevMonth}
+          title="Previous month"
+        >
+          <CaretLeft class="h-4 w-4" />
+        </button>
+        <span class="min-w-[8.5rem] text-center text-sm font-medium text-ink">
+          {formatMonthLabel(selectedMonth, locale)}
+        </span>
+        <button
+          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+          onclick={nextMonth}
+          title="Next month"
+        >
+          <CaretRight class="h-4 w-4" />
+        </button>
+      </div>
+      <button
+        class="press flex h-9 items-center gap-2 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
+        onclick={newGroup}
+      >
+        <Plus class="h-4 w-4" /> New group
+      </button>
+    </div>
   </div>
 
   <!-- Group editor -->
@@ -574,7 +629,7 @@
       </div>
 
       {#if ev.distribution.sections.length > 0}
-        <DistributionView group={ev.distribution} {currency} {locale} />
+        <DistributionView group={ev.distribution} {currency} {locale} {filterDescriptions} />
       {/if}
 
       {#if ev.targets.length > 0}
