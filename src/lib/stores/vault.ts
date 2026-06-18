@@ -13,7 +13,7 @@ import type { AppConfig } from '$lib/types';
 import { vaultTransition, type VaultStatus } from './vault-machine';
 
 /** Auto-lock after this much inactivity (also the max age of a remembered key). */
-export const IDLE_MS = 15 * 60 * 1000;
+export const IDLE_MS = 60 * 60 * 1000;
 const REMEMBER_KEY = 'crescent.remember';
 const TOUCH_THROTTLE_MS = 60 * 1000;
 
