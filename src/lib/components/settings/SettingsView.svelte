@@ -4,10 +4,11 @@
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { demoMode } from '$lib/stores/demo';
   import { vault } from '$lib/stores/vault';
   import { cryptoWorker } from '$lib/workers/cryptoClient';
-  import { vaultRepo, transactionRepo, configRepo, dateBucketOf } from '$lib/db/repos';
+  import { vaultRepo, transactionRepo, configRepo, balanceRepo, dateBucketOf } from '$lib/db/repos';
   import {
     serializeConfigTemplate,
     parseConfigTemplate,
@@ -18,7 +19,7 @@
   import { starterCategories, starterRules } from '$lib/config/schema';
   import { syncStore } from '$lib/stores/sync';
   import { loadClientId } from '$lib/sync/gdrive';
-  import type { AppConfig, Transaction } from '$lib/types';
+  import type { AppConfig, StartingBalances, Transaction } from '$lib/types';
 
   let savedAt = $state<string | null>(null);
   let importError = $state<string | null>(null);
@@ -148,6 +149,54 @@
     }));
   }
 
+  // ----- starting balances (encrypted, never in config) -----
+  let startingBalances = $state<StartingBalances>({});
+  let balancesLoaded = $state(false);
+
+  $effect(() => {
+    if (balancesLoaded) return;
+    balances.load().then((b) => {
+      startingBalances = structuredClone(b);
+      balancesLoaded = true;
+    });
+  });
+
+  // Rows: one per account, plus a catch-all for account-less transactions.
+  const balanceRows = $derived([
+    ...($config?.accounts ?? []).map((a) => ({ key: a.id, name: a.name })),
+    { key: '', name: 'Unassigned (no account)' }
+  ]);
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  async function persistBalances() {
+    await balances.save(startingBalances);
+    savedAt = 'Saved';
+    setTimeout(() => (savedAt = null), 2000);
+  }
+
+  function setBalanceAmount(key: string, raw: string) {
+    const next = { ...startingBalances };
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      delete next[key];
+    } else {
+      const amount = Math.round(parseFloat(trimmed.replace(',', '.')) * 100);
+      if (Number.isNaN(amount)) return;
+      next[key] = { amount, asOf: next[key]?.asOf ?? today() };
+    }
+    startingBalances = next;
+    void persistBalances();
+  }
+
+  function setBalanceDate(key: string, date: string) {
+    if (!date) return;
+    const next = { ...startingBalances };
+    next[key] = { amount: next[key]?.amount ?? 0, asOf: date };
+    startingBalances = next;
+    void persistBalances();
+  }
+
   // ----- asset pools -----
   let newPoolName = $state('');
 
@@ -194,11 +243,13 @@
         return;
       }
       const stored = await transactionRepo.allEncrypted();
+      const balancesBlob = await balanceRepo.getBlob();
       const backup = buildBackup({
         config: $config,
         kdf: { saltB64: material.saltB64, iterations: material.iterations },
         verifier: material.verifier,
-        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct }))
+        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct })),
+        balances: balancesBlob ?? undefined
       });
       const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -244,6 +295,7 @@
         verifier: backup.verifier
       });
       await configRepo.save(backup.config);
+      if (backup.balances) await balanceRepo.saveBlob(backup.balances);
       await transactionRepo.clear();
       if (txs.length) {
         await transactionRepo.bulkUpdateBlobs(
@@ -587,6 +639,49 @@
         </button>
       </div>
     </div>
+  </Card>
+
+  <!-- Account balances -->
+  <Card>
+    <h2 class="card-title mb-1">Account balances</h2>
+    <p class="mb-4 text-xs text-muted">
+      Your real balance for each account as of a date. The dashboard's
+      <span class="font-medium text-ink">Liquid balance</span> is this starting figure plus every
+      transaction since — so it reflects the actual money on hand. Stored encrypted; never in the
+      shareable config or template. Leave an amount blank to clear its anchor.
+    </p>
+
+    <ul class="divide-y divide-hairline border-y border-hairline">
+      {#each balanceRows as row (row.key)}
+        <li class="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+          <span class="min-w-0 flex-1 truncate text-sm text-ink">{row.name}</span>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
+                {$config?.meta.currency ?? ''}
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                inputmode="decimal"
+                value={startingBalances[row.key] ? startingBalances[row.key].amount / 100 : ''}
+                onchange={(e) => setBalanceAmount(row.key, e.currentTarget.value)}
+                placeholder="0.00"
+                aria-label="{row.name} starting balance"
+                class="h-9 w-32 rounded-control border border-hairline bg-surface py-0 pl-12 pr-2.5 text-right text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              />
+            </div>
+            <input
+              type="date"
+              value={startingBalances[row.key]?.asOf ?? ''}
+              onchange={(e) => setBalanceDate(row.key, e.currentTarget.value)}
+              aria-label="{row.name} balance date"
+              class="h-9 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+        </li>
+      {/each}
+    </ul>
   </Card>
 
   <!-- Asset pools -->

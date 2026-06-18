@@ -16,6 +16,7 @@
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
 
   let sidebarOpen = $state(false);
@@ -84,8 +85,10 @@
     if (status === 'unlocked') {
       config.load();
       transactions.loadAll();
+      balances.load();
     } else if (status === 'locked') {
       transactions.reset();
+      balances.reset();
     }
   });
 </script>

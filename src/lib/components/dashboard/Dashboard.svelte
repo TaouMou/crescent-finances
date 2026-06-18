@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { Check, Info, ArrowUpRight } from 'phosphor-svelte';
+  import { onMount } from 'svelte';
+  import { Check, Info } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import SummaryCards from './SummaryCards.svelte';
+  import SetupChecklist from './SetupChecklist.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
   import IncomeVsSpending from '$lib/components/charts/IncomeVsSpending.svelte';
@@ -19,6 +21,7 @@
   } from '$lib/seed/dashboard';
   import { toISODate } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { config } from '$lib/stores/config';
   import { demoMode } from '$lib/stores/demo';
   import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
@@ -32,6 +35,7 @@
 
   $effect(() => {
     transactions.loadAll();
+    balances.load();
   });
 
   const currency = $derived($config?.meta?.currency ?? demoCurrency);
@@ -42,6 +46,40 @@
   // there's no real data yet. All panels honour this single flag, so the
   // dashboard is either fully demo or fully real — never a confusing mix.
   const showDemo = $derived($demoMode && !hasData);
+
+  // ----- setup checklist (onboarding) -----
+  const SETUP_DISMISSED_KEY = 'crescent.setupDismissed';
+  let dismissed = $state(false);
+  onMount(() => {
+    try {
+      dismissed = localStorage.getItem(SETUP_DISMISSED_KEY) === '1';
+    } catch {
+      /* storage disabled — show by default */
+    }
+  });
+  function dismissSetup() {
+    dismissed = true;
+    try {
+      localStorage.setItem(SETUP_DISMISSED_KEY, '1');
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  const hasBalance = $derived(Object.keys($balances).length > 0);
+  const hasPlan = $derived(
+    ($config?.sectionGroups?.length ?? 0) > 0 && ($config?.sections?.length ?? 0) > 0
+  );
+  const hasGoal = $derived(($config?.sections ?? []).some((s) => s.calc?.type === 'target'));
+
+  const setupSteps = $derived([
+    { key: 'import', label: 'Import your transactions', hint: 'Bring in a CSV bank export.', href: '#import', done: hasData },
+    { key: 'balance', label: 'Set your starting balance', hint: 'So Liquid balance shows the real money in your accounts.', href: '#settings', done: hasBalance },
+    { key: 'plan', label: 'Set up a monthly plan', hint: 'Split your income into sections.', href: '#plan', done: hasPlan },
+    { key: 'goal', label: 'Add a savings goal', hint: 'Track progress toward a target.', href: '#plan', done: hasGoal }
+  ]);
+  const setupComplete = $derived(setupSteps.every((s) => s.done));
+  const showSetup = $derived(!setupComplete && !dismissed && !$txLoading);
 
   // ----- chart date range (lifted to App.svelte, received as bindable props) -----
   const _today = new Date();
@@ -105,23 +143,8 @@
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
   <SummaryCards {fromStr} {toStr} />
 
-  {#if !hasData && !$txLoading}
-    <!-- Empty state CTA -->
-    <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/5 py-12 text-center">
-      {#if showDemo}
-        <p class="text-base font-medium text-ink">Showing sample data</p>
-        <p class="text-sm text-muted">These are illustrative figures. Import a CSV to replace them with your own, or turn off demo data in Settings.</p>
-      {:else}
-        <p class="text-base font-medium text-ink">No transactions imported yet</p>
-        <p class="text-sm text-muted">Import a CSV bank export to see real data here.</p>
-      {/if}
-      <a
-        href="#import"
-        class="press mt-2 flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-      >
-        <ArrowUpRight class="h-4 w-4" /> Import CSV
-      </a>
-    </div>
+  {#if showSetup}
+    <SetupChecklist steps={setupSteps} {showDemo} ondismiss={dismissSetup} />
   {/if}
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">

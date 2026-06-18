@@ -40,7 +40,9 @@ const backupSchema = z.object({
   kdf: z.object({ saltB64: z.string(), iterations: z.number().int().positive() }),
   verifier: encryptedBlobSchema,
   config: configSchema,
-  transactions: z.array(backupTxSchema)
+  transactions: z.array(backupTxSchema),
+  /** Encrypted starting-balances blob. Optional for backward compatibility. */
+  balances: encryptedBlobSchema.optional()
 });
 
 export type Backup = z.infer<typeof backupSchema>;
@@ -51,6 +53,8 @@ export interface BackupParts {
   verifier: EncryptedBlob;
   /** Already-encrypted blobs with their dedup fingerprint. */
   transactions: BackupTx[];
+  /** Already-encrypted starting-balances blob, if any. */
+  balances?: EncryptedBlob;
 }
 
 /** Assemble an encrypted backup envelope from its parts. */
@@ -62,7 +66,8 @@ export function buildBackup(parts: BackupParts, now: string = new Date().toISOSt
     kdf: parts.kdf,
     verifier: parts.verifier,
     config: parts.config as Backup['config'],
-    transactions: parts.transactions
+    transactions: parts.transactions,
+    ...(parts.balances ? { balances: parts.balances } : {})
   };
 }
 
