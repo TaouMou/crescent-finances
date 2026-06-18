@@ -1,5 +1,30 @@
 /** Date helpers for timeframe selection and span description. */
 
+/** YYYY-MM bucket string for the given date (defaults to today). */
+export function monthKey(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** YYYY-MM bucket string for the current month. */
+export function currentMonth(): string {
+  return monthKey();
+}
+
+/** First and last ISO dates (YYYY-MM-DD) of a YYYY-MM bucket. */
+export function monthBounds(bucket: string): { from: string; to: string } {
+  const [y, m] = bucket.split('-').map(Number);
+  const from = `${bucket}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${bucket}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
+}
+
+/** Locale-aware label for a YYYY-MM bucket, e.g. "June 2026". */
+export function formatMonthLabel(bucket: string, locale: string): string {
+  const [y, m] = bucket.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+}
+
 /** Calendar months + leftover days between two dates (to >= from). */
 export function monthsDaysBetween(from: Date, to: Date): { months: number; days: number } {
   let months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
