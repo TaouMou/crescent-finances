@@ -54,26 +54,28 @@ describe('encrypted full backup', () => {
     const key = await deriveKey('my passphrase', salt, iterations);
     const verifier = await makeVerifier(key);
 
-    const txBlobs: EncryptedBlob[] = [await encryptJson(key, sampleTx)];
+    const blob = await encryptJson(key, sampleTx);
     const backup = buildBackup({
       config: emptyConfig(),
       kdf: { saltB64: toBase64(salt), iterations },
       verifier,
-      transactions: txBlobs
+      transactions: [{ fingerprint: sampleTx.fingerprint, iv: blob.iv, ct: blob.ct }]
     });
 
     // Serialize → wire → parse, simulating moving the file to a new device.
     const restored = parseBackup(serializeBackup(backup));
     expect(restored.format).toBe('crescent-backup');
     expect(restored.transactions).toHaveLength(1);
+    expect(restored.transactions[0].fingerprint).toBe(sampleTx.fingerprint);
 
     // Re-derive from the restored salt and decrypt.
     const key2 = await deriveKey('my passphrase', randomSalt(), iterations); // wrong salt
-    await expect(decryptJson(key2, restored.transactions[0])).rejects.toBeTruthy();
+    const { iv, ct } = restored.transactions[0];
+    await expect(decryptJson(key2, { iv, ct })).rejects.toBeTruthy();
 
     const { fromBase64 } = await import('../../src/lib/crypto/crypto');
     const goodKey = await deriveKey('my passphrase', fromBase64(restored.kdf.saltB64), restored.kdf.iterations);
-    const tx = await decryptJson<Transaction>(goodKey, restored.transactions[0]);
+    const tx = await decryptJson<Transaction>(goodKey, { iv, ct });
     expect(tx).toEqual(sampleTx);
   });
 

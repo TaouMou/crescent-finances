@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DownloadSimple, UploadSimple, Check, Plus, Trash, Warning, Sparkle } from 'phosphor-svelte';
+  import { DownloadSimple, UploadSimple, Check, Plus, Trash, Warning, Sparkle, Cloud, ArrowsClockwise } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import { config } from '$lib/stores/config';
@@ -16,6 +16,8 @@
     parseBackup
   } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
+  import { syncStore } from '$lib/stores/sync';
+  import { loadClientId } from '$lib/sync/gdrive';
   import type { AppConfig, Transaction } from '$lib/types';
 
   let savedAt = $state<string | null>(null);
@@ -23,6 +25,24 @@
   let fileInput: HTMLInputElement;
 
   const txCount = transactions;
+
+  // ----- Google Drive sync -----
+  let syncClientId = $state(loadClientId() ?? '');
+
+  function formatRelative(iso: string): string {
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hr${hrs !== 1 ? 's' : ''} ago`;
+    return `${Math.floor(hrs / 24)} days ago`;
+  }
+
+  async function connectDrive() {
+    const id = syncClientId.trim();
+    if (!id) return;
+    await syncStore.connect(id);
+  }
 
   async function patch(mutate: (c: AppConfig) => AppConfig) {
     if (!$config) return;
@@ -178,7 +198,7 @@
         config: $config,
         kdf: { saltB64: material.saltB64, iterations: material.iterations },
         verifier: material.verifier,
-        transactions: stored.map((s) => s.blob)
+        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct }))
       });
       const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -214,9 +234,10 @@
         backupError = 'That passphrase did not match the backup.';
         return;
       }
-      // Decrypt to recover each row's id/fingerprint/date, then re-persist the
-      // (already-encrypted) blobs under the restored vault material.
-      const txs = await cryptoWorker.decryptMany<Transaction>(backup.transactions);
+      // Decrypt to recover each row's id/date; use the fingerprint stored in the
+      // backup directly (avoids relying on the decrypted object's fingerprint field).
+      const blobs = backup.transactions.map((t) => ({ iv: t.iv, ct: t.ct }));
+      const txs = await cryptoWorker.decryptMany<Transaction>(blobs);
       await vaultRepo.saveMaterial({
         saltB64: backup.kdf.saltB64,
         iterations: backup.kdf.iterations,
@@ -228,9 +249,9 @@
         await transactionRepo.bulkUpdateBlobs(
           txs.map((tx, i) => ({
             id: tx.id,
-            fingerprint: tx.fingerprint,
+            fingerprint: backup.transactions[i].fingerprint,
             dateBucket: dateBucketOf(tx.date),
-            blob: backup.transactions[i]
+            blob: blobs[i]
           }))
         );
       }
@@ -684,6 +705,84 @@
 
     {#if backupError}
       <p class="mt-3 text-xs text-expense">{backupError}</p>
+    {/if}
+  </Card>
+
+  <!-- Google Drive sync -->
+  <Card>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="card-title mb-1">Google Drive sync</h2>
+        <p class="text-xs text-muted">
+          Sync your encrypted backup automatically. Data is end-to-end encrypted before
+          leaving this device — Google never sees your transactions.
+        </p>
+      </div>
+      {#if $syncStore.connected}
+        <span class="flex shrink-0 items-center gap-1 rounded-full bg-income/10 px-2 py-0.5 text-xs font-medium text-income">
+          <Cloud class="h-3 w-3" /> Connected
+        </span>
+      {/if}
+    </div>
+
+    {#if $syncStore.connected}
+      <div class="mt-4 space-y-3">
+        {#if $syncStore.lastSyncedAt}
+          <p class="text-xs text-muted">Last synced {formatRelative($syncStore.lastSyncedAt)}</p>
+        {/if}
+        {#if $syncStore.error}
+          <p class="text-xs text-expense">{$syncStore.error}</p>
+        {/if}
+        <div class="flex flex-wrap gap-2">
+          <button
+            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:opacity-50"
+            onclick={() => syncStore.sync()}
+            disabled={$syncStore.status === 'syncing'}
+          >
+            <ArrowsClockwise class="h-4 w-4 {$syncStore.status === 'syncing' ? 'animate-spin' : ''}" />
+            {$syncStore.status === 'syncing' ? 'Syncing…' : 'Sync now'}
+          </button>
+          <button
+            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            onclick={() => syncStore.disconnect()}
+          >
+            Disconnect
+          </button>
+        </div>
+      </div>
+    {:else}
+      <div class="mt-4 space-y-3">
+        <details class="text-xs text-muted">
+          <summary class="cursor-pointer select-none hover:text-ink">How to get a Client ID ›</summary>
+          <ol class="mt-2 list-decimal space-y-1 pl-4 leading-relaxed">
+            <li>Go to <strong class="text-ink">console.cloud.google.com</strong> and create a project.</li>
+            <li>Enable the <strong class="text-ink">Google Drive API</strong> for that project.</li>
+            <li>Under <em>Credentials</em>, create an <strong class="text-ink">OAuth 2.0 Web application</strong> credential.</li>
+            <li>Add this page's origin to <em>Authorised JavaScript origins</em>.</li>
+            <li>Copy the <strong class="text-ink">Client ID</strong> and paste it below.</li>
+          </ol>
+        </details>
+
+        <input
+          type="text"
+          bind:value={syncClientId}
+          placeholder="…apps.googleusercontent.com"
+          class="h-9 w-full rounded-control border border-hairline bg-surface px-3 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50"
+        />
+
+        {#if $syncStore.error && !$syncStore.connected}
+          <p class="text-xs text-expense">{$syncStore.error}</p>
+        {/if}
+
+        <button
+          class="press flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+          onclick={connectDrive}
+          disabled={!syncClientId.trim() || $syncStore.status === 'syncing'}
+        >
+          <Cloud class="h-4 w-4" />
+          {$syncStore.status === 'syncing' ? 'Connecting…' : 'Connect Google Drive'}
+        </button>
+      </div>
     {/if}
   </Card>
 

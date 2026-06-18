@@ -22,6 +22,17 @@ export const BACKUP_FORMAT = 'crescent-backup';
 
 const encryptedBlobSchema = z.object({ iv: z.string(), ct: z.string() });
 
+/**
+ * A transaction record inside a backup. The fingerprint is stored alongside the
+ * encrypted blob so sync can diff two backups by fingerprint without decrypting.
+ */
+export const backupTxSchema = z.object({
+  fingerprint: z.string(),
+  iv: z.string(),
+  ct: z.string()
+});
+export type BackupTx = z.infer<typeof backupTxSchema>;
+
 const backupSchema = z.object({
   format: z.literal(BACKUP_FORMAT),
   schemaVersion: z.number().int().positive(),
@@ -29,7 +40,7 @@ const backupSchema = z.object({
   kdf: z.object({ saltB64: z.string(), iterations: z.number().int().positive() }),
   verifier: encryptedBlobSchema,
   config: configSchema,
-  transactions: z.array(encryptedBlobSchema)
+  transactions: z.array(backupTxSchema)
 });
 
 export type Backup = z.infer<typeof backupSchema>;
@@ -38,8 +49,8 @@ export interface BackupParts {
   config: AppConfig;
   kdf: { saltB64: string; iterations: number };
   verifier: EncryptedBlob;
-  /** Already-encrypted transaction blobs. */
-  transactions: EncryptedBlob[];
+  /** Already-encrypted blobs with their dedup fingerprint. */
+  transactions: BackupTx[];
 }
 
 /** Assemble an encrypted backup envelope from its parts. */
