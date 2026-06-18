@@ -50,10 +50,12 @@
 
   let {
     fromStr = $bindable(toISODate(_aYearAgo)),
-    toStr = $bindable(toISODate(_today))
+    toStr = $bindable(toISODate(_today)),
+    spanLabel = ''
   }: {
     fromStr?: string;
     toStr?: string;
+    spanLabel?: string;
   } = $props();
 
   // Monthly buckets for income/spending bars and savings-rate line
@@ -144,6 +146,12 @@
         {:else}
           <IncomeVsSpending data={monthlyData} {currency} {locale} />
         {/if}
+        {#if spanLabel}
+          <div class="mt-4 flex items-center gap-2 border-t border-hairline pt-2.5">
+            <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent/50"></span>
+            <span class="text-[11px] text-muted/70">{spanLabel}</span>
+          </div>
+        {/if}
       </Card>
 
       <Card>
@@ -162,19 +170,28 @@
         {:else}
           <SavingsRate data={monthlyData} />
         {/if}
+        {#if spanLabel}
+          <div class="mt-4 flex items-center gap-2 border-t border-hairline pt-2.5">
+            <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent/50"></span>
+            <span class="text-[11px] text-muted/70">{spanLabel}</span>
+          </div>
+        {/if}
       </Card>
 
       <Card>
-        <div class="mb-4 flex items-baseline justify-between">
-          <h2 class="card-title">Spending by category</h2>
-          <span class="whitespace-nowrap text-xs text-muted">{fromStr.slice(0, 7)} – {toStr.slice(0, 7)}</span>
-        </div>
+        <h2 class="card-title mb-4">Spending by category</h2>
         {#if catSpend.length === 0}
           <div class="flex h-24 items-center justify-center text-sm text-muted">
             {$txLoading ? 'Loading…' : 'No categorized spending'}
           </div>
         {:else}
           <SpendingByCategory data={catSpend} {currency} {locale} />
+        {/if}
+        {#if spanLabel}
+          <div class="mt-4 flex items-center gap-2 border-t border-hairline pt-2.5">
+            <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent/50"></span>
+            <span class="text-[11px] text-muted/70">{spanLabel}</span>
+          </div>
         {/if}
       </Card>
     </div>

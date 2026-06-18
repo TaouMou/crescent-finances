@@ -103,7 +103,7 @@
     <!-- Left sidebar overlay -->
     {#if sidebarOpen}
       <button
-        class="fixed inset-0 z-40 w-full bg-ink/40"
+        class="fixed inset-0 z-40 w-full bg-black/40"
         transition:fade={{ duration: 200 }}
         onclick={() => (sidebarOpen = false)}
         aria-label="Close menu"
@@ -130,10 +130,6 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar
         {title}
-        {route}
-        bind:fromStr
-        bind:toStr
-        {spanLabel}
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
@@ -154,7 +150,7 @@
         {:else if route === 'settings'}
           <SettingsView />
         {:else}
-          <Dashboard bind:fromStr bind:toStr />
+          <Dashboard bind:fromStr bind:toStr {spanLabel} />
         {/if}
       </main>
     </div>

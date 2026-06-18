@@ -44,7 +44,7 @@
 
 <!-- Backdrop -->
 <button
-  class="fixed inset-0 z-40 w-full bg-ink/40"
+  class="fixed inset-0 z-40 w-full bg-black/40"
   transition:fade={{ duration: 200 }}
   onclick={() => onClose?.()}
   aria-label="Close panel"
@@ -85,8 +85,8 @@
         {/each}
       </div>
 
-      <!-- Date pickers — shown on mobile where topbar hides them -->
-      <div class="mt-5 md:hidden">
+      <!-- Custom date range -->
+      <div class="mt-5">
         <p class="mb-2 text-xs font-medium uppercase tracking-wider text-muted/60">Custom range</p>
         <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
           <DateField bind:value={fromStr} max={toStr} label="Start date" />
