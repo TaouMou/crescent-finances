@@ -1,7 +1,6 @@
 <script lang="ts">
   import { Check, Info, ArrowUpRight } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
-  import DateField from '$lib/components/ui/DateField.svelte';
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
   import SpendingByCategory from '$lib/components/charts/SpendingByCategory.svelte';
@@ -18,7 +17,7 @@
     demoCurrency,
     demoLocale
   } from '$lib/seed/dashboard';
-  import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
+  import { toISODate } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
   import { config } from '$lib/stores/config';
   import { demoMode } from '$lib/stores/demo';
@@ -44,22 +43,18 @@
   // dashboard is either fully demo or fully real — never a confusing mix.
   const showDemo = $derived($demoMode && !hasData);
 
-  // ----- chart date range -----
-  const today = new Date();
-  const aYearAgo = new Date(today);
-  aYearAgo.setFullYear(today.getFullYear() - 1);
+  // ----- chart date range (lifted to App.svelte, received as bindable props) -----
+  const _today = new Date();
+  const _aYearAgo = new Date(_today);
+  _aYearAgo.setFullYear(_today.getFullYear() - 1);
 
-  let fromStr = $state(toISODate(aYearAgo));
-  let toStr = $state(toISODate(today));
-
-  const fromDate = $derived(new Date(`${fromStr}T00:00:00`));
-  const toDate = $derived(new Date(`${toStr}T23:59:59`));
-
-  const spanLabel = $derived.by(() => {
-    const { months, days } = monthsDaysBetween(fromDate, toDate);
-    const span = formatSpan(months, days);
-    return isSameDay(toDate, today) ? `Last ${span}` : span;
-  });
+  let {
+    fromStr = $bindable(toISODate(_aYearAgo)),
+    toStr = $bindable(toISODate(_today))
+  }: {
+    fromStr?: string;
+    toStr?: string;
+  } = $props();
 
   // Monthly buckets for income/spending bars and savings-rate line
   const monthlyData = $derived.by(() => {
@@ -131,23 +126,15 @@
     <!-- Main column -->
     <div class="space-y-5 lg:col-span-2">
       <Card>
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <h2 class="card-title">Income vs Spending</h2>
-            <div class="flex items-center gap-3 text-xs text-muted">
-              <span class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-[3px] bg-income"></span>Income
-              </span>
-              <span class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-[3px] bg-expense"></span>Spending
-              </span>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-            <DateField bind:value={fromStr} max={toStr} label="Start date" />
-            <span class="text-muted">–</span>
-            <DateField bind:value={toStr} min={fromStr} label="End date" />
-            <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
+        <div class="mb-4 flex items-center gap-4">
+          <h2 class="card-title">Income vs Spending</h2>
+          <div class="flex items-center gap-3 text-xs text-muted">
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-[3px] bg-income"></span>Income
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-[3px] bg-expense"></span>Spending
+            </span>
           </div>
         </div>
         {#if monthlyData.length === 0}
@@ -162,14 +149,11 @@
       <Card>
         <div class="mb-4 flex items-baseline justify-between">
           <h2 class="card-title">Savings rate</h2>
-          <div class="flex items-center gap-2">
-            {#if avgSavingsRate !== null}
-              <span class={`text-sm font-medium tabular-nums ${avgSavingsRate >= 0 ? 'text-income' : 'text-expense'}`}>
-                avg {avgSavingsRate}%
-              </span>
-            {/if}
-            <span class="whitespace-nowrap text-xs text-muted">{spanLabel}</span>
-          </div>
+          {#if avgSavingsRate !== null}
+            <span class={`text-sm font-medium tabular-nums ${avgSavingsRate >= 0 ? 'text-income' : 'text-expense'}`}>
+              avg {avgSavingsRate}%
+            </span>
+          {/if}
         </div>
         {#if monthlyData.length === 0}
           <div class="flex h-24 items-center justify-center text-sm text-muted">
