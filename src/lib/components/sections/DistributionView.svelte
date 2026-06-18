@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PencilSimple, Trash } from 'phosphor-svelte';
+  import { Funnel, PencilSimple, Trash } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup, DistributionSection } from '$lib/seed/dashboard';
 
@@ -7,12 +7,15 @@
     group,
     currency = 'EUR',
     locale = 'en-US',
+    filterDescriptions = {},
     onEdit,
     onDelete
   }: {
     group: DistributionGroup;
     currency?: string;
     locale?: string;
+    /** Optional map of section id → human-readable filter label for filterSum sections. */
+    filterDescriptions?: Record<string, string>;
     /** When provided, each row shows an edit button wired to the section id. */
     onEdit?: (id: string) => void;
     /** When provided, each row shows a delete button wired to the section id. */
@@ -123,6 +126,20 @@
           Plan {fmt(s.planned)}{#if s.kind === 'remainder'}&nbsp;· remainder{:else if s.plannedPct != null}&nbsp;·
             {formatPercent(s.plannedPct, locale)} of {group.source.toLowerCase()}{/if}
         </p>
+
+        {#if s.kind === 'filterSum' && filterDescriptions[s.id]}
+          <div
+            class="relative mt-1.5 flex items-center gap-1.5 overflow-hidden rounded-[5px] px-2.5 py-1"
+            style={`border:1px solid ${s.color}33;background:${s.color}0d`}
+          >
+            <div
+              class="pointer-events-none absolute inset-y-0 left-0 w-20 blur-[6px]"
+              style={`background:radial-gradient(80% 150% at 0% 50%, ${s.color}55, transparent 80%)`}
+            ></div>
+            <Funnel color={s.color} class="relative h-3 w-3 shrink-0" />
+            <span class="relative truncate text-[11px] text-muted">{filterDescriptions[s.id]}</span>
+          </div>
+        {/if}
       </li>
     {/each}
   </ul>

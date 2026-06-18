@@ -236,7 +236,7 @@
   {:else}
     <div
       bind:clientHeight={containerH}
-      class="flex-1 overflow-y-auto"
+      class="flex-1 touch-pan-y overscroll-contain overflow-y-auto"
       onscroll={onScroll}
     >
       <div class="px-4 md:px-6" style="height: {totalH}px; box-sizing: content-box;">
