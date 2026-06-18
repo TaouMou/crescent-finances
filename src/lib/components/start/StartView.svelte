@@ -124,8 +124,8 @@
       <h2 class="card-title">Use-case recipes</h2>
       <p class="text-sm text-muted">
         Not sure how to arrange your plan? Apply one of these and tweak it on the Plan page. A
-        common setup: salary comes in, expenses go out, and what's left is split into Savings,
-        Investment and Charity.
+        common setup: from each salary you set aside slices for Savings, Investment and Charity,
+        and the rest covers your expenses.
       </p>
     </div>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
