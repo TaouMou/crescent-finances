@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { Plus, Trash, PencilSimple, Check, X, Target } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
@@ -10,7 +11,6 @@
   import { transactions } from '$lib/stores/transactions';
   import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { evaluatePlan } from '$lib/sections/engine';
-  import { nextOccurrence } from '$lib/sections/schedule';
   import { planTemplates, type PlanTemplate } from '$lib/sections/templates';
   import { safeParseConfig } from '$lib/config/schema';
   import { demoCurrency, demoLocale } from '$lib/seed/dashboard';
@@ -38,14 +38,20 @@
     kind: SectionGroupKind;
   }
   let editingGroup = $state<GroupDraft | null>(null);
+  let groupModalOpen = $state(false);
+
+  // Closing a modal (backdrop / Esc / X) clears its draft.
+  $effect(() => {
+    if (!groupModalOpen) editingGroup = null;
+  });
 
   function newGroup() {
-    editingSection = null;
     editingGroup = { name: '', kind: 'distribution' };
+    groupModalOpen = true;
   }
   function editGroup(g: SectionGroup) {
-    editingSection = null;
     editingGroup = { id: g.id, name: g.name, kind: g.kind };
+    groupModalOpen = true;
   }
 
   async function saveGroup() {
@@ -64,7 +70,7 @@
       });
     }
     await persist({ sectionGroups: groups });
-    editingGroup = null;
+    groupModalOpen = false;
   }
 
   async function deleteGroup(id: string) {
@@ -104,6 +110,11 @@
     annivDay: number;
   }
   let editingSection = $state<SectionDraft | null>(null);
+  let sectionModalOpen = $state(false);
+
+  $effect(() => {
+    if (!sectionModalOpen) editingSection = null;
+  });
 
   const blankSection = (groupId: string): SectionDraft => ({
     groupId,
@@ -129,12 +140,17 @@
   });
 
   function newSection(groupId: string) {
-    editingGroup = null;
     editingSection = blankSection(groupId);
+    sectionModalOpen = true;
+  }
+
+  /** Look up a section by id (from a distribution/goal row) and open its editor. */
+  function editSectionById(id: string) {
+    const s = ($config?.sections ?? []).find((x) => x.id === id);
+    if (s) editSection(s);
   }
 
   function editSection(s: Section) {
-    editingGroup = null;
     const d = blankSection(s.groupId ?? '');
     d.id = s.id;
     d.name = s.name;
@@ -176,6 +192,7 @@
       }
     }
     editingSection = d;
+    sectionModalOpen = true;
   }
 
   function draftToSchedule(d: SectionDraft): Schedule | undefined {
@@ -241,7 +258,7 @@
       });
     }
     await persist({ sections });
-    editingSection = null;
+    sectionModalOpen = false;
   }
 
   async function deleteSection(id: string) {
@@ -261,29 +278,6 @@
     saving = true;
     await config.save(next);
     saving = false;
-  }
-
-  function sectionsOf(groupId: string): Section[] {
-    return ($config?.sections ?? [])
-      .filter((s) => s.groupId === groupId)
-      .sort((a, b) => a.order - b.order);
-  }
-
-  function calcLabel(s: Section): string {
-    switch (s.calc.type) {
-      case 'percentage':
-        return `${s.calc.percent}% of income`;
-      case 'fixed':
-        return 'Fixed amount';
-      case 'remainder':
-        return "Whatever's left over";
-      case 'target':
-        return 'Savings goal';
-      case 'filterSum':
-        return 'Tracked spending';
-      case 'accountBalance':
-        return 'Account balance';
-    }
   }
 
   /** Friendly word for a group's kind (avoid leaking the raw data value). */
@@ -324,19 +318,6 @@
     }
   }
 
-  function scheduleLabel(s: Section): string | null {
-    if (!s.schedule) return null;
-    const next = nextOccurrence(s.schedule);
-    const nextStr = next
-      ? new Date(`${next}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
-      : null;
-    const base =
-      s.schedule.kind === 'interval' && s.schedule.interval
-        ? `Every ${s.schedule.interval.everyDays} days`
-        : 'Yearly';
-    return nextStr ? `${base} · next ${nextStr}` : base;
-  }
-
   onMount(() => {
     if ($openNewGroupRequested) {
       openNewGroupRequested.set(false);
@@ -364,9 +345,8 @@
   </div>
 
   <!-- Group editor -->
-  {#if editingGroup}
-    <div class="rounded-xl border border-accent/30 bg-accent/5 p-5 shadow-sm">
-      <h2 class="mb-4 text-sm font-semibold text-ink">{editingGroup.id ? 'Edit plan' : 'New plan'}</h2>
+  <Modal bind:open={groupModalOpen} title={editingGroup?.id ? 'Edit budget' : 'New budget'}>
+    {#if editingGroup}
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
@@ -374,14 +354,14 @@
             type="text"
             bind:value={editingGroup.name}
             placeholder="e.g. Monthly plan"
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">What is this?</span>
           <select
             bind:value={editingGroup.kind}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <option value="distribution">Budget — split income into buckets</option>
             <option value="plain">Goals — track savings targets</option>
@@ -396,7 +376,7 @@
         </label>
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
-        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (editingGroup = null)}>
+        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (groupModalOpen = false)}>
           <X class="h-4 w-4" /> Cancel
         </button>
         <button
@@ -407,13 +387,12 @@
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
-    </div>
-  {/if}
+    {/if}
+  </Modal>
 
   <!-- Section editor -->
-  {#if editingSection}
-    <div class="rounded-xl border border-accent/30 bg-accent/5 p-5 shadow-sm">
-      <h2 class="mb-4 text-sm font-semibold text-ink">{editingSection.id ? 'Edit item' : 'New bucket or goal'}</h2>
+  <Modal bind:open={sectionModalOpen} title={editingSection?.id ? 'Edit bucket or goal' : 'New bucket or goal'}>
+    {#if editingSection}
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
@@ -421,7 +400,7 @@
             type="text"
             bind:value={editingSection.name}
             placeholder="e.g. Savings"
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -432,7 +411,7 @@
           <span class="text-xs text-muted">How is this calculated?</span>
           <select
             bind:value={editingSection.calcType}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <optgroup label="Allocate income">
               <option value="percentage">% of income</option>
@@ -458,17 +437,17 @@
         {#if editingSection.calcType === 'percentage'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Percent of income</span>
-            <input type="number" min="0" max="100" bind:value={editingSection.percent} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="0" max="100" bind:value={editingSection.percent} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
         {:else if editingSection.calcType === 'fixed'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Amount ({currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.amountMajor} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="0" step="0.01" bind:value={editingSection.amountMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
         {:else if editingSection.calcType === 'target'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target amount ({currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.targetMajor} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="0" step="0.01" bind:value={editingSection.targetMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target date (optional)</span>
@@ -480,7 +459,7 @@
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Track progress from (optional)</span>
-            <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+            <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
               <option value="">Not linked — progress stays 0%</option>
               {#each $config?.assetPools ?? [] as p (p.id)}
                 <option value={p.id}>{p.name}</option>
@@ -491,7 +470,7 @@
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Asset pool</span>
             {#if ($config?.assetPools ?? []).length > 0}
-              <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+              <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
                 <option value="">Select a pool…</option>
                 {#each $config?.assetPools ?? [] as p (p.id)}
                   <option value={p.id}>{p.name}</option>
@@ -508,7 +487,7 @@
               <select
                 multiple
                 bind:value={editingSection.filterCategoryIds}
-                class="min-h-[5.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                class="min-h-[5.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
               >
                 {#each $config?.categories ?? [] as c (c.id)}
                   <option value={c.id}>{c.name}</option>
@@ -520,7 +499,7 @@
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Planned (optional, {currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.plannedMajor} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="0" step="0.01" bind:value={editingSection.plannedMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
           <details class="sm:col-span-2">
             <summary class="cursor-pointer text-xs text-muted hover:text-ink">More filters</summary>
@@ -528,7 +507,7 @@
               {#if ($config?.accounts ?? []).length > 0}
                 <label class="flex flex-col gap-1">
                   <span class="text-xs text-muted">Accounts</span>
-                  <select multiple bind:value={editingSection.filterAccountIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                  <select multiple bind:value={editingSection.filterAccountIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
                     {#each $config?.accounts ?? [] as a (a.id)}
                       <option value={a.id}>{a.name}</option>
                     {/each}
@@ -538,7 +517,7 @@
               {#if ($config?.tags ?? []).length > 0}
                 <label class="flex flex-col gap-1">
                   <span class="text-xs text-muted">Tags</span>
-                  <select multiple bind:value={editingSection.filterTagIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                  <select multiple bind:value={editingSection.filterTagIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
                     {#each $config?.tags ?? [] as t (t.id)}
                       <option value={t.id}>{t.name}</option>
                     {/each}
@@ -547,7 +526,7 @@
               {/if}
               <label class="flex flex-col gap-1 sm:col-span-2">
                 <span class="text-xs text-muted">Label contains</span>
-                <input type="text" bind:value={editingSection.filterQuery} placeholder="e.g. groceries" class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+                <input type="text" bind:value={editingSection.filterQuery} placeholder="e.g. groceries" class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
               </label>
             </div>
           </details>
@@ -558,7 +537,7 @@
           <span class="text-xs text-muted">Schedule (optional)</span>
           <select
             bind:value={editingSection.scheduleKind}
-            class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
             <option value="none">None</option>
             <option value="interval">Every N days</option>
@@ -568,7 +547,7 @@
         {#if editingSection.scheduleKind === 'interval'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Every (days)</span>
-            <input type="number" min="1" bind:value={editingSection.intervalEveryDays} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="1" bind:value={editingSection.intervalEveryDays} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Starting from</span>
@@ -577,16 +556,16 @@
         {:else if editingSection.scheduleKind === 'anniversary'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Month (1–12)</span>
-            <input type="number" min="1" max="12" bind:value={editingSection.annivMonth} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="1" max="12" bind:value={editingSection.annivMonth} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Day (1–31)</span>
-            <input type="number" min="1" max="31" bind:value={editingSection.annivDay} class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <input type="number" min="1" max="31" bind:value={editingSection.annivDay} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
           </label>
         {/if}
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
-        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (editingSection = null)}>
+        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (sectionModalOpen = false)}>
           <X class="h-4 w-4" /> Cancel
         </button>
         <button
@@ -597,11 +576,11 @@
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
-    </div>
-  {/if}
+    {/if}
+  </Modal>
 
   <!-- Empty state: template gallery -->
-  {#if evaluated.length === 0 && !editingGroup && !editingSection}
+  {#if evaluated.length === 0}
     <div class="space-y-4 rounded-xl border border-dashed border-accent/30 bg-accent/5 p-6">
       <div class="text-center">
         <p class="text-base font-medium text-ink">Let's set up your plan</p>
@@ -648,42 +627,19 @@
       </div>
 
       {#if ev.distribution.sections.length > 0}
-        <DistributionView group={ev.distribution} {currency} {locale} />
+        <DistributionView group={ev.distribution} {currency} {locale} onEdit={editSectionById} onDelete={deleteSection} />
       {/if}
 
       {#if ev.targets.length > 0}
         <div class="mt-5">
           <h3 class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink"><Target class="h-4 w-4 text-accent" /> Goals</h3>
           <p class="mb-3 text-xs text-muted">The line on each bar marks where you'd be today to finish on time.</p>
-          <TargetProgress items={ev.targets} {currency} {locale} />
+          <TargetProgress items={ev.targets} {currency} {locale} onEdit={editSectionById} onDelete={deleteSection} />
         </div>
       {/if}
 
-      <!-- Section management -->
-      {#if sectionsOf(ev.group.id).length > 0}
-        <ul class="mt-5 divide-y divide-hairline border-t border-hairline pt-1">
-          {#each sectionsOf(ev.group.id) as s (s.id)}
-            <li class="flex items-center gap-3 py-2">
-              <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${s.color}`}></span>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm text-ink">{s.name}</p>
-                <p class="truncate text-xs text-muted">
-                  {calcLabel(s)}{#if scheduleLabel(s)} · {scheduleLabel(s)}{/if}
-                </p>
-              </div>
-              <div class="flex shrink-0 items-center gap-1">
-                <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => editSection(s)} title="Edit section">
-                  <PencilSimple class="h-4 w-4" />
-                </button>
-                <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => deleteSection(s.id)} title="Delete section">
-                  <Trash class="h-4 w-4" />
-                </button>
-              </div>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <p class="mt-4 text-sm text-muted">Nothing here yet — add a bucket or a goal.</p>
+      {#if ev.distribution.sections.length === 0 && ev.targets.length === 0}
+        <p class="text-sm text-muted">Nothing here yet — add a bucket or a goal.</p>
       {/if}
     </Card>
   {/each}

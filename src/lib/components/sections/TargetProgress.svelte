@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PencilSimple, Trash } from 'phosphor-svelte';
   import { formatMoney } from '$lib/utils/currency';
   import { targetPace, type TargetPace } from '$lib/sections/engine';
   import type { TargetSection } from '$lib/seed/dashboard';
@@ -6,8 +7,18 @@
   let {
     items,
     currency = 'EUR',
-    locale = 'en-US'
-  }: { items: TargetSection[]; currency?: string; locale?: string } = $props();
+    locale = 'en-US',
+    onEdit,
+    onDelete
+  }: {
+    items: TargetSection[];
+    currency?: string;
+    locale?: string;
+    /** When provided, each goal shows an edit button wired to the section id. */
+    onEdit?: (id: string) => void;
+    /** When provided, each goal shows a delete button wired to the section id. */
+    onDelete?: (id: string) => void;
+  } = $props();
 
   const fmt = (n: number) => formatMoney(n, { currency, locale, whole: true });
 
@@ -54,6 +65,20 @@
             </span>
           {/if}
           <span class="tnum text-sm font-medium text-ink">{v.pct}%</span>
+          {#if onEdit || onDelete}
+            <div class="-my-1 flex items-center gap-0.5">
+              {#if onEdit}
+                <button class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => onEdit?.(t.id)} title="Edit goal">
+                  <PencilSimple class="h-3.5 w-3.5" />
+                </button>
+              {/if}
+              {#if onDelete}
+                <button class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => onDelete?.(t.id)} title="Delete goal">
+                  <Trash class="h-3.5 w-3.5" />
+                </button>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
 
