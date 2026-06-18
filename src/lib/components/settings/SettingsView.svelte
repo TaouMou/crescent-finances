@@ -342,9 +342,18 @@
     patch((c) => ({ ...c, meta: { ...c.meta, locale: v } }));
   }
 
-  // ----- anomaly thresholds (stored only; detection ships in a later update) -----
+  // ----- anomaly thresholds -----
   function setAnomaly(key: keyof AppConfig['settings']['anomaly'], v: number) {
     patch((c) => ({ ...c, settings: { ...c.settings, anomaly: { ...c.settings.anomaly, [key]: v } } }));
+  }
+
+  // "Sensitivity" is a friendlier face for the MAD multiplier: a lower k flags
+  // more (higher sensitivity), a higher k only flags bigger surprises.
+  const LEVEL_TO_MADK: Record<string, number> = { high: 2, medium: 3, low: 4 };
+  function madKLevel(k: number): 'high' | 'medium' | 'low' {
+    if (k <= 2.5) return 'high';
+    if (k < 3.5) return 'medium';
+    return 'low';
   }
 
   // ----- config template export / import (plaintext, financial-data-free) -----
@@ -437,30 +446,6 @@
     </div>
   </Card>
 
-  <!-- Anomaly thresholds -->
-  <Card>
-    <h2 class="card-title mb-1">Anomaly detection</h2>
-    <p class="mb-4 text-xs text-muted">Flags categories whose spending this month is a robust outlier above their recent baseline. Shown on the dashboard Anomalies card.</p>
-    <div class="grid gap-4 sm:grid-cols-2">
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Baseline months</span>
-        <input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Threshold (%)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Min absolute (minor units)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.minAbsolute ?? 5000} onchange={(e) => setAnomaly('minAbsolute', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">MAD multiplier (k)</span>
-        <input type="number" min="0" step="0.1" value={$config?.settings.anomaly.madK ?? 3} onchange={(e) => setAnomaly('madK', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-    </div>
-  </Card>
-
   <!-- Categories -->
   <Card>
     <div class="mb-1 flex items-center justify-between gap-2">
@@ -522,64 +507,6 @@
         class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
         onclick={addCategory}
         disabled={!newCatName.trim()}
-      >
-        <Plus class="h-4 w-4" /> Add
-      </button>
-    </div>
-  </Card>
-
-  <!-- Tags -->
-  <Card>
-    <h2 class="card-title mb-1">Tags</h2>
-    <p class="mb-4 text-xs text-muted">
-      Stackable labels for transactions. Unlike categories, a transaction can carry multiple tags — useful for cross-cutting flags like "Reimbursable" or "Holiday trip". Assign them via rules.
-    </p>
-
-    {#if ($config?.tags ?? []).length > 0}
-      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
-        {#each $config?.tags ?? [] as tag (tag.id)}
-          <li class="flex items-center gap-2 py-2">
-            <ColorField
-              value={tag.color}
-              onValue={(c) => updateTag(tag.id, 'color', c)}
-              label="{tag.name || 'Tag'} color"
-              class="h-8 w-9"
-            />
-            <input
-              type="text"
-              value={tag.name}
-              onchange={(e) => updateTag(tag.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            />
-            <button
-              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
-              onclick={() => deleteTag(tag.id)}
-              title="Delete tag"
-            >
-              <Trash class="h-4 w-4" />
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="mb-4 text-sm text-muted">No tags yet — add one below.</p>
-    {/if}
-
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <div class="flex flex-1 items-center gap-2">
-        <ColorField bind:value={newTagColor} label="New tag color" />
-        <input
-          type="text"
-          bind:value={newTagName}
-          placeholder="New tag name"
-          onkeydown={(e) => e.key === 'Enter' && addTag()}
-          class={inputCls + ' min-w-0 flex-1'}
-        />
-      </div>
-      <button
-        class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
-        onclick={addTag}
-        disabled={!newTagName.trim()}
       >
         <Plus class="h-4 w-4" /> Add
       </button>
@@ -682,6 +609,104 @@
         </li>
       {/each}
     </ul>
+  </Card>
+
+  <!-- Advanced settings (collapsed by default) -->
+  <details class="group">
+    <summary class="flex cursor-pointer select-none items-center gap-2 py-1 text-sm font-medium text-muted hover:text-ink">
+      <span class="transition-transform group-open:rotate-90">›</span>
+      Advanced settings
+    </summary>
+    <p class="mb-4 mt-1 pl-5 text-xs text-muted">
+      Anomaly tuning, tags, asset pools, backups, sync and reset. You can ignore these to start.
+    </p>
+    <div class="space-y-6">
+
+  <!-- Anomaly detection -->
+  <Card>
+    <h2 class="card-title mb-1">Anomaly detection</h2>
+    <p class="mb-4 text-xs text-muted">Flags a category when its spending this month jumps unusually above its recent months — surfaced on the dashboard Anomalies card.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Months to compare against</span>
+        <input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} class={inputCls} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum increase (%)</span>
+        <input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} class={inputCls} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum amount ({$config?.meta.currency ?? ''})</span>
+        <input type="number" min="0" step="0.01" value={($config?.settings.anomaly.minAbsolute ?? 5000) / 100} onchange={(e) => setAnomaly('minAbsolute', Math.round(parseFloat(e.currentTarget.value || '0') * 100))} class={inputCls} />
+        <span class="text-[11px] text-muted/80">Ignore jumps smaller than this.</span>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Sensitivity</span>
+        <select value={madKLevel($config?.settings.anomaly.madK ?? 3)} onchange={(e) => setAnomaly('madK', LEVEL_TO_MADK[e.currentTarget.value] ?? 3)} class={inputCls}>
+          <option value="high">High — flag more</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low — only big surprises</option>
+        </select>
+      </label>
+    </div>
+  </Card>
+
+  <!-- Tags -->
+  <Card>
+    <h2 class="card-title mb-1">Tags</h2>
+    <p class="mb-4 text-xs text-muted">
+      Stackable labels for transactions. Unlike categories, a transaction can carry multiple tags — useful for cross-cutting flags like "Reimbursable" or "Holiday trip". Assign them via rules.
+    </p>
+
+    {#if ($config?.tags ?? []).length > 0}
+      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
+        {#each $config?.tags ?? [] as tag (tag.id)}
+          <li class="flex items-center gap-2 py-2">
+            <ColorField
+              value={tag.color}
+              onValue={(c) => updateTag(tag.id, 'color', c)}
+              label="{tag.name || 'Tag'} color"
+              class="h-8 w-9"
+            />
+            <input
+              type="text"
+              value={tag.name}
+              onchange={(e) => updateTag(tag.id, 'name', e.currentTarget.value.trim())}
+              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+            <button
+              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+              onclick={() => deleteTag(tag.id)}
+              title="Delete tag"
+            >
+              <Trash class="h-4 w-4" />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="mb-4 text-sm text-muted">No tags yet — add one below.</p>
+    {/if}
+
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div class="flex flex-1 items-center gap-2">
+        <ColorField bind:value={newTagColor} label="New tag color" />
+        <input
+          type="text"
+          bind:value={newTagName}
+          placeholder="New tag name"
+          onkeydown={(e) => e.key === 'Enter' && addTag()}
+          class={inputCls + ' min-w-0 flex-1'}
+        />
+      </div>
+      <button
+        class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
+        onclick={addTag}
+        disabled={!newTagName.trim()}
+      >
+        <Plus class="h-4 w-4" /> Add
+      </button>
+    </div>
   </Card>
 
   <!-- Asset pools -->
@@ -937,4 +962,7 @@
       </div>
     </div>
   </Card>
+
+    </div>
+  </details>
 </div>
