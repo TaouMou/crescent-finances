@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { Plus, Trash, PencilSimple, Check, X, Target, CaretLeft, CaretRight } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -351,7 +350,12 @@
     }
   }
 
-  onMount(() => {
+  // Consume the sidebar's "+ New budget" request reactively rather than only on
+  // mount: the flag can be set while PlanView is already mounted (clicking the
+  // sidebar button while on #plan doesn't trigger a hashchange/remount), so an
+  // onMount-only read would leave it stuck true and spawn the modal on the next
+  // navigation to Plan.
+  $effect(() => {
     if ($openNewGroupRequested) {
       openNewGroupRequested.set(false);
       newGroup();
