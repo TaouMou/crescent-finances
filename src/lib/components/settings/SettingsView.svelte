@@ -17,6 +17,7 @@
     parseBackup
   } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
+  import { parseMoneyInput } from '$lib/utils/currency';
   import { syncStore } from '$lib/stores/sync';
   import { loadClientId } from '$lib/sync/gdrive';
   import type { AppConfig, StartingBalances, Transaction } from '$lib/types';
@@ -152,6 +153,11 @@
   // ----- starting balances (encrypted, never in config) -----
   let startingBalances = $state<StartingBalances>({});
   let balancesLoaded = $state(false);
+  // What the user is currently typing per row, so reformatting never fights the
+  // caret while they enter decimals. Falls back to the stored value for display.
+  let amountDrafts = $state<Record<string, string>>({});
+  // Row key that just saved, for a brief inline "Saved" confirmation.
+  let savedRow = $state<string | null>(null);
 
   $effect(() => {
     if (balancesLoaded) return;
@@ -169,24 +175,39 @@
 
   const today = () => new Date().toISOString().slice(0, 10);
 
-  async function persistBalances() {
+  // The amount shown in the input: the live draft if any, else the stored value.
+  function amountValue(key: string): string {
+    if (key in amountDrafts) return amountDrafts[key];
+    const sb = startingBalances[key];
+    return sb ? String(sb.amount / 100) : '';
+  }
+
+  async function persistBalances(savedKey?: string) {
     await balances.save(startingBalances);
     savedAt = 'Saved';
     setTimeout(() => (savedAt = null), 2000);
+    if (savedKey !== undefined) {
+      savedRow = savedKey;
+      setTimeout(() => savedRow === savedKey && (savedRow = null), 1800);
+    }
   }
 
-  function setBalanceAmount(key: string, raw: string) {
+  // Debounce the encrypt+write so typing doesn't hammer the worker, but update
+  // the in-memory map synchronously so a value is never lost on navigation.
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  function applyAmount(key: string, raw: string, immediate: boolean) {
+    amountDrafts[key] = raw;
+    const minor = parseMoneyInput(raw);
     const next = { ...startingBalances };
-    const trimmed = raw.trim();
-    if (trimmed === '') {
-      delete next[key];
-    } else {
-      const amount = Math.round(parseFloat(trimmed.replace(',', '.')) * 100);
-      if (Number.isNaN(amount)) return;
-      next[key] = { amount, asOf: next[key]?.asOf ?? today() };
-    }
+    if (minor === null) delete next[key];
+    else next[key] = { amount: minor, asOf: next[key]?.asOf ?? today() };
     startingBalances = next;
-    void persistBalances();
+    if (saveTimer) clearTimeout(saveTimer);
+    if (immediate) {
+      void persistBalances(key);
+    } else {
+      saveTimer = setTimeout(() => void persistBalances(key), 300);
+    }
   }
 
   function setBalanceDate(key: string, date: string) {
@@ -194,7 +215,7 @@
     const next = { ...startingBalances };
     next[key] = { amount: next[key]?.amount ?? 0, asOf: date };
     startingBalances = next;
-    void persistBalances();
+    void persistBalances(key);
   }
 
   // ----- asset pools -----
@@ -571,28 +592,40 @@
   <!-- Account balances -->
   <Card>
     <h2 class="card-title mb-1">Account balances</h2>
-    <p class="mb-4 text-xs text-muted">
-      Your real balance for each account as of a date. The dashboard's
-      <span class="font-medium text-ink">Liquid balance</span> is this starting figure plus every
-      transaction since — so it reflects the actual money on hand. Stored encrypted; never in the
-      shareable config or template. Leave an amount blank to clear its anchor.
+    <p class="mb-2 text-xs text-muted">
+      Your real balance for each account as of a date — the number your bank shows today is
+      easiest. The dashboard's <span class="font-medium text-ink">Liquid balance</span> is this
+      starting figure plus every transaction since, so it reflects the actual money on hand.
+      Stored encrypted; never in the shareable config or template. Leave an amount blank to clear
+      its anchor.
     </p>
+    {#if ($config?.accounts ?? []).length === 0}
+      <p class="mb-4 text-xs text-warn">
+        No accounts yet — add your bank account in <span class="font-medium">Accounts</span> above,
+        then its balance will appear here.
+      </p>
+    {/if}
 
     <ul class="divide-y divide-hairline border-y border-hairline">
       {#each balanceRows as row (row.key)}
         <li class="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
-          <span class="min-w-0 flex-1 truncate text-sm text-ink">{row.name}</span>
+          <span class="flex min-w-0 flex-1 items-center gap-2 truncate text-sm text-ink">
+            {row.name}
+            {#if savedRow === row.key}
+              <span class="flex shrink-0 items-center gap-0.5 text-xs text-income"><Check class="h-3 w-3" /> Saved</span>
+            {/if}
+          </span>
           <div class="flex items-center gap-2">
             <div class="relative">
               <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
                 {$config?.meta.currency ?? ''}
               </span>
               <input
-                type="number"
-                step="0.01"
+                type="text"
                 inputmode="decimal"
-                value={startingBalances[row.key] ? startingBalances[row.key].amount / 100 : ''}
-                onchange={(e) => setBalanceAmount(row.key, e.currentTarget.value)}
+                value={amountValue(row.key)}
+                oninput={(e) => applyAmount(row.key, e.currentTarget.value, false)}
+                onchange={(e) => applyAmount(row.key, e.currentTarget.value, true)}
                 placeholder="0.00"
                 aria-label="{row.name} starting balance"
                 class="h-9 w-32 rounded-control border border-hairline bg-surface py-0 pl-12 pr-2.5 text-right text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
