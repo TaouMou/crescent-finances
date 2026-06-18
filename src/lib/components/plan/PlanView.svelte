@@ -11,6 +11,7 @@
   import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { evaluatePlan } from '$lib/sections/engine';
   import { nextOccurrence } from '$lib/sections/schedule';
+  import { planTemplates, type PlanTemplate } from '$lib/sections/templates';
   import { safeParseConfig } from '$lib/config/schema';
   import { demoCurrency, demoLocale } from '$lib/seed/dashboard';
   import type { Schedule, Section, SectionCalc, SectionGroup, SectionGroupKind, TransactionFilter } from '$lib/types';
@@ -23,6 +24,10 @@
   const evaluated = $derived(
     evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
   );
+
+  // True once at least one income transaction exists; until then percentage /
+  // remainder buckets evaluate to 0 and we surface a gentle note.
+  const hasIncome = $derived(($txAll ?? []).some((t) => t.amount > 0));
 
   let saving = $state(false);
 
@@ -271,13 +276,51 @@
       case 'fixed':
         return 'Fixed amount';
       case 'remainder':
-        return 'Remainder of income';
+        return "Whatever's left over";
       case 'target':
-        return 'Goal / target';
+        return 'Savings goal';
       case 'filterSum':
         return 'Tracked spending';
       case 'accountBalance':
-        return 'Account / pool balance';
+        return 'Account balance';
+    }
+  }
+
+  /** Friendly word for a group's kind (avoid leaking the raw data value). */
+  function groupKindLabel(kind: SectionGroupKind): string {
+    return kind === 'distribution' ? 'Budget' : 'Goals';
+  }
+
+  /** One-line explanation + example shown under the section Type select. */
+  function calcTypeHint(t: CalcType): string {
+    switch (t) {
+      case 'percentage':
+        return 'Sets aside a share of your income. Example: Savings = 20% of income.';
+      case 'fixed':
+        return 'A set amount every period, regardless of income. Example: Rent = €900.';
+      case 'remainder':
+        return "Absorbs all income left after the other buckets — keeps your budget at 100%.";
+      case 'filterSum':
+        return 'Adds up real transactions that match a filter, so you see actual vs planned. Example: Groceries.';
+      case 'accountBalance':
+        return 'Shows the live balance of an asset pool. Example: Cash buffer = your checking pool.';
+      case 'target':
+        return 'Track progress toward an amount. Link a pool for real progress; add a date to pace it.';
+    }
+  }
+
+  /** Apply a starter template, then optionally open a section for editing. */
+  async function useTemplate(t: PlanTemplate) {
+    if (!$config) return;
+    const built = t.build();
+    await persist({
+      sectionGroups: [...$config.sectionGroups, ...built.sectionGroups],
+      sections: [...$config.sections, ...built.sections]
+    });
+    const openId = t.openSectionAfter?.(built);
+    if (openId) {
+      const s = built.sections.find((x) => x.id === openId);
+      if (s) editSection(s);
     }
   }
 
@@ -306,24 +349,24 @@
   <!-- Header -->
   <div class="space-y-3">
     <div>
-      <h1 class="text-lg font-semibold text-ink">Plan</h1>
+      <h1 class="text-lg font-semibold text-ink">Plan &amp; Goals</h1>
       <p class="mt-0.5 text-sm text-muted">
-        Split your income into sections (savings, fixed costs, spending) and track goals.
-        Add a <em>tracked spending</em> section to see real actuals from your transactions.
+        Decide where your money goes each period, and track progress toward savings goals.
+        Start from a template, or build your own.
       </p>
     </div>
     <button
       class="press flex h-9 items-center gap-2 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
       onclick={newGroup}
     >
-      <Plus class="h-4 w-4" /> New group
+      <Plus class="h-4 w-4" /> New budget
     </button>
   </div>
 
   <!-- Group editor -->
   {#if editingGroup}
     <div class="rounded-xl border border-accent/30 bg-accent/5 p-5 shadow-sm">
-      <h2 class="mb-4 text-sm font-semibold text-ink">{editingGroup.id ? 'Edit group' : 'New group'}</h2>
+      <h2 class="mb-4 text-sm font-semibold text-ink">{editingGroup.id ? 'Edit plan' : 'New plan'}</h2>
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
@@ -335,14 +378,21 @@
           />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-xs text-muted">Kind</span>
+          <span class="text-xs text-muted">What is this?</span>
           <select
             bind:value={editingGroup.kind}
             class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
-            <option value="distribution">Distribution (planned vs actual)</option>
-            <option value="plain">Plain (goals / list)</option>
+            <option value="distribution">Budget — split income into buckets</option>
+            <option value="plain">Goals — track savings targets</option>
           </select>
+          <span class="text-xs text-muted">
+            {#if editingGroup.kind === 'distribution'}
+              Splits your income across buckets and compares plan vs actual. Best for monthly budgeting.
+            {:else}
+              A simple list for savings goals — track how close you are to each target.
+            {/if}
+          </span>
         </label>
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
@@ -363,7 +413,7 @@
   <!-- Section editor -->
   {#if editingSection}
     <div class="rounded-xl border border-accent/30 bg-accent/5 p-5 shadow-sm">
-      <h2 class="mb-4 text-sm font-semibold text-ink">{editingSection.id ? 'Edit section' : 'New section'}</h2>
+      <h2 class="mb-4 text-sm font-semibold text-ink">{editingSection.id ? 'Edit item' : 'New bucket or goal'}</h2>
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
@@ -379,19 +429,31 @@
           <ColorField bind:value={editingSection.color} label="Section color" block />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-xs text-muted">Type</span>
+          <span class="text-xs text-muted">How is this calculated?</span>
           <select
             bind:value={editingSection.calcType}
             class="h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           >
-            <option value="percentage">Percentage of income</option>
-            <option value="fixed">Fixed amount</option>
-            <option value="remainder">Remainder of income</option>
-            <option value="target">Goal / target</option>
-            <option value="filterSum">Tracked spending (filter)</option>
-            <option value="accountBalance">Account / pool balance</option>
+            <optgroup label="Allocate income">
+              <option value="percentage">% of income</option>
+              <option value="fixed">Fixed amount each period</option>
+              <option value="remainder">Whatever's left over</option>
+            </optgroup>
+            <optgroup label="Track actuals">
+              <option value="filterSum">Tracked spending (from transactions)</option>
+              <option value="accountBalance">Account balance</option>
+            </optgroup>
+            <optgroup label="Goals">
+              <option value="target">Savings goal</option>
+            </optgroup>
           </select>
         </label>
+        <p class="text-xs text-muted sm:col-span-2 -mt-2">{calcTypeHint(editingSection.calcType)}</p>
+        {#if (editingSection.calcType === 'percentage' || editingSection.calcType === 'remainder') && !hasIncome}
+          <p class="text-xs text-warn sm:col-span-2 -mt-2">
+            No income imported yet — this bucket will show 0 until you import transactions with income.
+          </p>
+        {/if}
 
         {#if editingSection.calcType === 'percentage'}
           <label class="flex flex-col gap-1">
@@ -413,7 +475,7 @@
             <DateField bind:value={editingSection.targetDate} clearable label="Target date" />
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
-            <span class="text-xs text-muted">Start date (optional — anchors the on-track pace marker)</span>
+            <span class="text-xs text-muted">Start date (optional — when you began saving; sets the on-track pace line)</span>
             <DateField bind:value={editingSection.startDate} clearable label="Start date" />
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
@@ -538,17 +600,29 @@
     </div>
   {/if}
 
-  <!-- Empty state -->
-  {#if evaluated.length === 0 && !editingGroup}
-    <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/5 py-12 text-center">
-      <p class="text-base font-medium text-ink">No plan groups yet</p>
-      <p class="text-sm text-muted">Create a group to start allocating income and tracking goals.</p>
-      <button
-        class="press mt-2 flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-        onclick={newGroup}
-      >
-        <Plus class="h-4 w-4" /> New group
-      </button>
+  <!-- Empty state: template gallery -->
+  {#if evaluated.length === 0 && !editingGroup && !editingSection}
+    <div class="space-y-4 rounded-xl border border-dashed border-accent/30 bg-accent/5 p-6">
+      <div class="text-center">
+        <p class="text-base font-medium text-ink">Let's set up your plan</p>
+        <p class="text-sm text-muted">Pick a starter template to get going in one click, or build your own.</p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        {#each planTemplates as t (t.id)}
+          <button
+            class="press flex flex-col gap-1 rounded-xl border border-hairline bg-surface p-4 text-left hover:border-accent/50"
+            onclick={() => useTemplate(t)}
+          >
+            <span class="text-sm font-medium text-ink">{t.title}</span>
+            <span class="text-xs text-muted">{t.description}</span>
+          </button>
+        {/each}
+      </div>
+      <div class="text-center">
+        <button class="press text-sm font-medium text-accent hover:underline" onclick={newGroup}>
+          or build from scratch
+        </button>
+      </div>
     </div>
   {/if}
 
@@ -558,11 +632,11 @@
       <div class="mb-4 flex items-center justify-between gap-2">
         <div class="min-w-0">
           <h2 class="card-title truncate">{ev.group.name}</h2>
-          <span class="text-xs text-muted capitalize">{ev.group.kind}</span>
+          <span class="text-xs text-muted">{groupKindLabel(ev.group.kind)}</span>
         </div>
         <div class="flex shrink-0 items-center gap-1">
-          <button class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2.5 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => newSection(ev.group.id)} title="Add section">
-            <Plus class="h-3.5 w-3.5" /> Section
+          <button class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2.5 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => newSection(ev.group.id)} title="Add bucket or goal">
+            <Plus class="h-3.5 w-3.5" /> {ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}
           </button>
           <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => editGroup(ev.group)} title="Edit group">
             <PencilSimple class="h-4 w-4" />
@@ -579,7 +653,8 @@
 
       {#if ev.targets.length > 0}
         <div class="mt-5">
-          <h3 class="mb-3 flex items-center gap-1.5 text-sm font-medium text-ink"><Target class="h-4 w-4 text-accent" /> Goals</h3>
+          <h3 class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink"><Target class="h-4 w-4 text-accent" /> Goals</h3>
+          <p class="mb-3 text-xs text-muted">The line on each bar marks where you'd be today to finish on time.</p>
           <TargetProgress items={ev.targets} {currency} {locale} />
         </div>
       {/if}
@@ -608,7 +683,7 @@
           {/each}
         </ul>
       {:else}
-        <p class="mt-4 text-sm text-muted">No sections yet — add one to allocate income or set a goal.</p>
+        <p class="mt-4 text-sm text-muted">Nothing here yet — add a bucket or a goal.</p>
       {/if}
     </Card>
   {/each}
