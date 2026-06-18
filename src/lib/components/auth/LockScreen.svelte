@@ -133,7 +133,7 @@
         Keep me unlocked on this device
       </label>
       {#if $vault.remember}
-        <p class="px-1 text-xs text-muted/80">Locks automatically after 15 minutes of inactivity.</p>
+        <p class="px-1 text-xs text-muted/80">Locks automatically after 1 hour of inactivity.</p>
       {/if}
 
       <button type="submit" class={cn('submit-btn press', !canSubmit && 'opacity-50')} disabled={!canSubmit}>

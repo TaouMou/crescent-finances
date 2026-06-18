@@ -19,7 +19,7 @@ Built with SvelteKit/Svelte 5, TypeScript, Dexie/IndexedDB, Tailwind, Vite.
 
 Opt-in. The non-extractable `CryptoKey` is persisted (via IndexedDB structured-clone) inside the worker's own session store (`session-store.ts`). On next boot the worker tries to resume the saved key if it is within the idle window.
 
-- **Idle auto-lock:** 15 minutes of inactivity. Any lock (sidebar Lock button or idle timeout) forgets the session so the next page load re-prompts for the passphrase.
+- **Idle auto-lock:** 1 hour of inactivity. Any lock (sidebar Lock button or idle timeout) forgets the session so the next page load re-prompts for the passphrase.
 
 ## Architecture — key files
 
