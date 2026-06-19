@@ -82,7 +82,8 @@
     {#each group.sections as s (s.id)}
       {@const m = meta(s)}
       <li class="space-y-1.5">
-        <div class="flex items-baseline justify-between gap-3">
+        <!-- Header — desktop: name + amount + delta + actions on one line -->
+        <div class="hidden items-baseline justify-between gap-3 sm:flex">
           <div class="flex min-w-0 items-center gap-2">
             <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${s.color}`}></span>
             <span class="truncate text-sm text-ink">{s.name}</span>
@@ -109,6 +110,20 @@
           </div>
         </div>
 
+        <!-- Header — mobile: name + amount only (delta shown below; actions move to meta) -->
+        <div class="flex items-baseline justify-between gap-2 sm:hidden">
+          <div class="flex min-w-0 items-center gap-2">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={`background:${s.color}`}></span>
+            <span class="truncate text-sm text-ink">{s.name}</span>
+          </div>
+          <div class="flex shrink-0 items-baseline gap-2">
+            <span class="tnum text-sm text-ink">{fmt(s.actual)}</span>
+            {#if m.delta !== 0}
+              <span class={`tnum text-xs ${m.tone}`}>{m.label}</span>
+            {/if}
+          </div>
+        </div>
+
         <!-- Bullet: track · actual fill (capped at plan) · overflow cap · planned tick -->
         <div class="relative h-2.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
           <div
@@ -130,10 +145,27 @@
           {/if}
         </div>
 
-        <p class="text-xs text-muted">
-          Plan {fmt(s.planned)}{#if s.kind === 'remainder'}&nbsp;· remainder{:else if s.plannedPct != null}&nbsp;·
-            {formatPercent(s.plannedPct, locale)} of {group.source.toLowerCase()}{/if}
-        </p>
+        <!-- Meta: plan/% on the left; on mobile the edit/delete actions sit here. -->
+        <div class="flex items-center justify-between gap-2">
+          <p class="min-w-0 truncate text-xs text-muted">
+            Plan {fmt(s.planned)}{#if s.kind === 'remainder'}&nbsp;· remainder{:else if s.plannedPct != null}&nbsp;·
+              {formatPercent(s.plannedPct, locale)} of {group.source.toLowerCase()}{/if}
+          </p>
+          {#if onEdit || onDelete}
+            <div class="-my-1 flex shrink-0 items-center gap-0.5 sm:hidden">
+              {#if onEdit}
+                <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => onEdit?.(s.id)} title="Edit bucket" aria-label="Edit {s.name}">
+                  <PencilSimple class="h-4 w-4" />
+                </button>
+              {/if}
+              {#if onDelete}
+                <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => onDelete?.(s.id)} title="Delete bucket" aria-label="Delete {s.name}">
+                  <Trash class="h-4 w-4" />
+                </button>
+              {/if}
+            </div>
+          {/if}
+        </div>
 
         {#if s.kind === 'filterSum' && filterDescriptions[s.id]}
           <div

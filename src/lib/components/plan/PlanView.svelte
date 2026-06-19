@@ -395,10 +395,10 @@
         </button>
       </div>
       <button
-        class="press flex h-9 items-center gap-2 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
+        class="press flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
         onclick={newGroup}
       >
-        <Plus class="h-4 w-4" /> New budget
+        <Plus class="h-4 w-4 shrink-0" /> New budget
       </button>
     </div>
   </div>
@@ -682,8 +682,8 @@
           <span class="text-xs text-muted">{groupKindLabel(ev.group.kind)}</span>
         </div>
         <div class="flex shrink-0 items-center gap-1">
-          <button class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2.5 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => newSection(ev.group.id)} title="Add bucket or goal">
-            <Plus class="h-3.5 w-3.5" /> {ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}
+          <button class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:px-2.5" onclick={() => newSection(ev.group.id)} title={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'} aria-label={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}>
+            <Plus class="h-3.5 w-3.5" /> <span class="hidden sm:inline">{ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}</span>
           </button>
           <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => editGroup(ev.group)} title="Edit group">
             <PencilSimple class="h-4 w-4" />
