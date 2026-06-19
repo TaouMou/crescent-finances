@@ -6,6 +6,15 @@
   import type { Rule } from '$lib/types';
   import { describeMatch, describeActions } from '$lib/rules/describe';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import {
+    Select,
+    SelectTrigger,
+    SelectContent,
+    SelectItem,
+    SelectValue
+  } from '$lib/components/ui/select';
 
   let saving = $state(false);
   let applyStatus = $state<string | null>(null);
@@ -114,21 +123,14 @@
       </p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <button
-        class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        onclick={applyRulesNow}
-        title="Re-apply all rules to stored transactions"
-      >
+      <Button variant="outline" onclick={applyRulesNow} title="Re-apply all rules to stored transactions">
         <Play class="h-4 w-4" />
         Apply now
-      </button>
-      <button
-        class="press flex h-9 items-center gap-2 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-        onclick={startNew}
-      >
+      </Button>
+      <Button onclick={startNew}>
         <Plus class="h-4 w-4" />
         New rule
-      </button>
+      </Button>
       {#if applyStatus}
         <span class="text-xs text-muted">{applyStatus}</span>
       {/if}
@@ -142,71 +144,86 @@
         <!-- Priority -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Priority</span>
-          <input
+          <Input
             type="number"
             min="1"
             bind:value={editing.priority}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
 
         <!-- Field -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Match field</span>
-          <select
-            bind:value={editing.match.field}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+          <Select
+            type="single"
+            value={editing.match.field}
+            onValueChange={(v) => editing && (editing.match.field = v as 'label' | 'entity')}
           >
-            <option value="label">Description</option>
-            <option value="entity">Entity</option>
-          </select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="label" label="Description" />
+              <SelectItem value="entity" label="Entity" />
+            </SelectContent>
+          </Select>
         </label>
 
         <!-- Match type -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Match type</span>
-          <select
-            bind:value={editing.match.type}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+          <Select
+            type="single"
+            value={editing.match.type}
+            onValueChange={(v) => editing && (editing.match.type = v as 'keyword' | 'regex')}
           >
-            <option value="keyword">Contains keyword</option>
-            <option value="regex">Regex pattern</option>
-          </select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="keyword" label="Contains keyword" />
+              <SelectItem value="regex" label="Regex pattern" />
+            </SelectContent>
+          </Select>
         </label>
 
         <!-- Value -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Value</span>
-          <input
+          <Input
             type="text"
             bind:value={editing.match.value}
             placeholder={editing.match.type === 'keyword' ? 'e.g. ALDI' : 'e.g. ^NETFLIX'}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
 
         <!-- Category -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Set category</span>
-          <select
-            bind:value={editing.setCategoryId}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+          <Select
+            type="single"
+            value={editing.setCategoryId ?? ''}
+            onValueChange={(v) => editing && (editing.setCategoryId = v || undefined)}
           >
-            <option value={undefined}>— no change —</option>
-            {#each categories as cat (cat.id)}
-              <option value={cat.id}>{cat.name}</option>
-            {/each}
-          </select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="" label="— no change —" />
+              {#each categories as cat (cat.id)}
+                <SelectItem value={cat.id} label={cat.name} />
+              {/each}
+            </SelectContent>
+          </Select>
         </label>
 
         <!-- Entity -->
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Set entity label</span>
-          <input
+          <Input
             type="text"
             bind:value={editing.setEntity}
             placeholder="e.g. Aldi"
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
         </label>
 
@@ -244,19 +261,14 @@
 
       <!-- Actions -->
       <div class="mt-5 flex items-center justify-end gap-2">
-        <button
-          class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10"
-          onclick={cancelEdit}
-        >
-          Cancel
-        </button>
-        <button
-          class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+        <Button variant="ghost" onclick={cancelEdit}>Cancel</Button>
+        <Button
           onclick={saveRule}
           disabled={saving || !editing.match.value.trim()}
         >
-          <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
-        </button>
+          <Check class="h-4 w-4" />
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
       </div>
     {/if}
   </Modal>
@@ -310,20 +322,23 @@
 
           <!-- Edit / delete: spans both rows on mobile -->
           <div class="row-span-2 flex shrink-0 items-center gap-1">
-            <button
-              class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            <Button
+              variant="ghost"
+              size="icon"
               onclick={() => startEdit(rule)}
               title="Edit"
             >
               <PencilSimple class="h-4 w-4" />
-            </button>
-            <button
-              class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="text-muted hover:bg-red-500/10 hover:text-red-500"
               onclick={() => deleteRule(rule.id)}
               title="Delete"
             >
               <Trash class="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           <!-- Secondary text: second row on mobile, inline on desktop -->
