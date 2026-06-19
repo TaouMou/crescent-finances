@@ -74,16 +74,16 @@
       </a>
     </div>
   {:else}
-    <!-- Summary strip -->
-    <div class="card rounded-card grid grid-cols-3 divide-x divide-hairline">
+    <!-- Summary cards -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       {#each [
         { label: 'Total income',   value: totals.income,   tone: 'text-income',  signed: false },
         { label: 'Total spending', value: totals.spending, tone: 'text-expense', signed: false },
         { label: 'Net',            value: totals.net,      tone: totals.net >= 0 ? 'text-income' : 'text-expense', signed: true }
       ] as s (s.label)}
-        <div class="min-w-0 px-3 py-4 md:px-5">
-          <p class="truncate text-xs text-muted">{s.label}</p>
-          <p class={cn('tnum mt-2 truncate text-sm font-semibold md:text-lg', s.tone)}>
+        <div class="card rounded-card min-w-0 px-5 py-6">
+          <p class="text-xs font-semibold uppercase tracking-wide text-muted">{s.label}</p>
+          <p class={cn('tnum mt-3 truncate text-2xl font-bold leading-none md:text-3xl', s.tone)}>
             {fmtWhole(s.value, s.signed)}
           </p>
         </div>
