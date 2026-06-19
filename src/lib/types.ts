@@ -165,6 +165,24 @@ export interface AppConfig {
   settings: { anomaly: AnomalySettings };
 }
 
+/**
+ * A user-entered opening balance for an account: the real money present as of
+ * `asOf`, before any transaction dated on/after it is applied. This is financial
+ * data, so it is stored ENCRYPTED (never in the shareable, plaintext config).
+ */
+export interface StartingBalance {
+  /** Account balance as of `asOf`, in integer minor units (cents), signed. */
+  amount: number;
+  /** Inclusive ISO date (YYYY-MM-DD) the balance was taken on. */
+  asOf: string;
+}
+
+/**
+ * Starting balances keyed by `accountId`. The empty-string key `''` holds the
+ * anchor for transactions with no account (`accountId === null`).
+ */
+export type StartingBalances = Record<string, StartingBalance>;
+
 /** A financial row. Stored encrypted at rest; this is the decrypted shape. */
 export interface Transaction {
   id: string;

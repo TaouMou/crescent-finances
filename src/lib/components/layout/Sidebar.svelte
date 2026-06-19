@@ -7,6 +7,7 @@
     UploadSimple,
     GearSix,
     CaretRight,
+    Compass,
     Moon,
     Sun,
     Lock,
@@ -29,6 +30,7 @@
   } = $props();
 
   const nav = [
+    { id: 'start', label: 'Getting started', icon: Compass },
     { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
     { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight },
     { id: 'monthly', label: 'Breakdown', icon: CalendarBlank },

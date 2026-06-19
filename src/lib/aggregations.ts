@@ -3,7 +3,7 @@
  * All amounts in integer minor units (cents). Negative = expense.
  */
 
-import type { Category, Transaction } from '$lib/types';
+import type { Category, StartingBalances, Transaction } from '$lib/types';
 
 export interface PeriodSummary {
   income: number;
@@ -86,6 +86,31 @@ export function accountsBalance(txs: Transaction[], accountIds: string[]): numbe
     if (tx.accountId !== null && set.has(tx.accountId)) sum += tx.amount;
   }
   return sum;
+}
+
+/**
+ * Current liquid balance — the real money on hand right now, independent of any
+ * selected period.
+ *
+ * For each account that has a starting balance, the balance is that anchor plus
+ * the signed sum of its transactions dated on/after the anchor date (earlier
+ * rows are already baked into the figure the user entered). Transactions whose
+ * account has NO anchor fall back to a plain cumulative sum (anchored at 0), so
+ * with zero configuration this is simply the all-time net of everything
+ * imported. The `''` key anchors account-less transactions (`accountId === null`).
+ */
+export function liquidBalance(txs: Transaction[], starting: StartingBalances = {}): number {
+  let total = 0;
+  for (const sb of Object.values(starting)) total += sb.amount;
+  for (const tx of txs) {
+    const anchor = starting[tx.accountId ?? ''];
+    if (anchor) {
+      if (tx.date >= anchor.asOf) total += tx.amount;
+    } else {
+      total += tx.amount;
+    }
+  }
+  return total;
 }
 
 export function monthlyNets(txs: Transaction[]): MonthlyNet[] {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, Info, ArrowUpRight } from 'phosphor-svelte';
+  import { Check, Info, ArrowUpRight, Compass } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
@@ -19,6 +19,7 @@
   } from '$lib/seed/dashboard';
   import { toISODate } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { config } from '$lib/stores/config';
   import { demoMode } from '$lib/stores/demo';
   import { categoryBreakdown, monthlyNets } from '$lib/aggregations';
@@ -32,6 +33,7 @@
 
   $effect(() => {
     transactions.loadAll();
+    balances.load();
   });
 
   const currency = $derived($config?.meta?.currency ?? demoCurrency);
@@ -106,22 +108,32 @@
   <SummaryCards {fromStr} {toStr} />
 
   {#if !hasData && !$txLoading}
-    <!-- Empty state CTA -->
-    <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/5 py-12 text-center">
-      {#if showDemo}
-        <p class="text-base font-medium text-ink">Showing sample data</p>
-        <p class="text-sm text-muted">These are illustrative figures. Import a CSV to replace them with your own, or turn off demo data in Settings.</p>
-      {:else}
-        <p class="text-base font-medium text-ink">No transactions imported yet</p>
-        <p class="text-sm text-muted">Import a CSV bank export to see real data here.</p>
-      {/if}
-      <a
-        href="#import"
-        class="press mt-2 flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-      >
-        <ArrowUpRight class="h-4 w-4" /> Import CSV
-      </a>
-    </div>
+    <Card class="ring-1 ring-accent/15">
+      <div class="flex flex-col items-center gap-2 py-6 text-center">
+        <p class="text-base font-medium text-ink">
+          {showDemo ? 'Showing sample data' : 'No transactions yet'}
+        </p>
+        <p class="max-w-md text-sm text-muted">
+          {showDemo
+            ? 'These are illustrative figures. Import a CSV bank export to replace them with your own.'
+            : 'Import a CSV bank export to see your real numbers here.'}
+        </p>
+        <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="#import"
+            class="press flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90"
+          >
+            <ArrowUpRight class="h-4 w-4" /> Import CSV
+          </a>
+          <a
+            href="#start"
+            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-4 text-sm font-medium text-ink hover:bg-ink/5"
+          >
+            <Compass class="h-4 w-4" /> New here? Start guide
+          </a>
+        </div>
+      </div>
+    </Card>
   {/if}
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -203,7 +215,8 @@
           <h2 class="card-title">{distribution?.name ?? 'Monthly plan'}</h2>
           {#if distribution}
             <span
-              class={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
+              title="Counts the share of income assigned across your percentage buckets. A 'remainder' bucket fills whatever is left, so the plan reaches 100%."
+              class={`inline-flex shrink-0 cursor-help items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
                 planBalanced
                   ? 'border-income/30 bg-income/10 text-income'
                   : 'border-warn/30 bg-warn/10 text-warn'
@@ -243,10 +256,14 @@
       </Card>
 
       <Card>
-        <div class="mb-4 flex items-baseline justify-between">
+        <div class="mb-1 flex items-baseline justify-between">
           <h2 class="card-title">Anomalies</h2>
           <span class="text-xs text-muted">This period</span>
         </div>
+        <p class="mb-4 text-xs text-muted">
+          Categories spending unusually more than your last {anomalySettings.baselineMonths} months. Open the
+          help panel for how this is measured.
+        </p>
         <AnomaliesList data={anomalyData} />
       </Card>
     </div>

@@ -3,7 +3,8 @@
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
   import { cn } from '$lib/utils/cn';
-  import type { Rule, RuleMatch } from '$lib/types';
+  import type { Rule } from '$lib/types';
+  import { describeMatch, describeActions } from '$lib/rules/describe';
   import Modal from '$lib/components/ui/Modal.svelte';
 
   let saving = $state(false);
@@ -95,13 +96,6 @@
 
   const categories = $derived($config?.categories ?? []);
   const tags = $derived($config?.tags ?? []);
-
-  function fieldLabel(f: RuleMatch['field']) {
-    return f === 'label' ? 'Description' : 'Entity';
-  }
-  function typeLabel(t: RuleMatch['type']) {
-    return t === 'keyword' ? 'contains' : 'matches regex';
-  }
 </script>
 
 <div class="mx-auto max-w-[860px] space-y-6 p-6">
@@ -110,8 +104,13 @@
     <div>
       <h1 class="text-lg font-semibold text-ink">Rules</h1>
       <p class="mt-0.5 text-sm text-muted">
-        Auto-categorize transactions on import or on demand.
-        Rules run in priority order (lower number = first).
+        Fill in details automatically: match a transaction's description or merchant, then set a
+        category, rename the merchant, or add tags. Rules run in priority order (lower number =
+        first).
+      </p>
+      <p class="mt-1 text-xs text-muted">
+        Example: when the description contains <code class="rounded bg-ink/8 px-1 py-0.5">ALDI</code>
+        → set category Groceries.
       </p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -302,8 +301,7 @@
           <!-- Primary text -->
           <p class="min-w-0 truncate text-sm text-ink">
             <span class="text-[11px] font-medium text-muted sm:hidden">{rule.priority} · </span>
-            <span class="text-muted">{fieldLabel(rule.match.field)}</span>
-            {' '}<span class="italic">{typeLabel(rule.match.type)}</span>
+            <span class="text-muted">{describeMatch(rule)}</span>
             {' '}<code class="rounded bg-ink/8 px-1 py-0.5 text-xs">{rule.match.value}</code>
             {#if !rule.match.caseSensitive}
               <span class="hidden text-xs text-muted sm:inline"> (case-insensitive)</span>
@@ -330,45 +328,12 @@
 
           <!-- Secondary text: second row on mobile, inline on desktop -->
           <p class="min-w-0 truncate text-xs text-muted sm:hidden">
-            {#if rule.setCategoryId}
-              {@const cat = categories.find((c) => c.id === rule.setCategoryId)}
-              → {cat?.name ?? rule.setCategoryId}
-            {/if}
-            {#if rule.setEntity}
-              {#if rule.setCategoryId} · {/if}→ {rule.setEntity}
-            {/if}
-            {#if rule.addTagIds?.length}
-              {#if rule.setCategoryId || rule.setEntity} · {/if}
-              {#each rule.addTagIds as tid, i (tid)}
-                {@const tag = tags.find((t) => t.id === tid)}
-                {#if tag}{#if i > 0}, {/if}<span class="inline-flex items-center gap-1"><span class="inline-block h-1.5 w-1.5 rounded-full" style={`background:${tag.color}`}></span>{tag.name}</span>{/if}
-              {/each}
-            {/if}
-            {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
-              no actions
-            {/if}
+            {describeActions(rule, categories, tags)}
           </p>
 
           <!-- Secondary text: desktop only (flex sibling) -->
-          <p class="hidden sm:block min-w-0 flex-1 truncate text-xs text-muted">
-            {#if rule.setCategoryId}
-              {@const cat = categories.find((c) => c.id === rule.setCategoryId)}
-              Set category → {cat?.name ?? rule.setCategoryId}
-            {/if}
-            {#if rule.setEntity}
-              {#if rule.setCategoryId} · {/if}
-              Set entity → {rule.setEntity}
-            {/if}
-            {#if rule.addTagIds?.length}
-              {#if rule.setCategoryId || rule.setEntity} · {/if}
-              {#each rule.addTagIds as tid, i (tid)}
-                {@const tag = tags.find((t) => t.id === tid)}
-                {#if tag}{#if i > 0}, {/if}<span class="inline-flex items-center gap-1"><span class="inline-block h-1.5 w-1.5 rounded-full" style={`background:${tag.color}`}></span>{tag.name}</span>{/if}
-              {/each}
-            {/if}
-            {#if !rule.setCategoryId && !rule.setEntity && !rule.addTagIds?.length}
-              (no actions)
-            {/if}
+          <p class="hidden min-w-0 flex-1 truncate text-xs text-muted sm:block">
+            {describeActions(rule, categories, tags)}
           </p>
         </div>
       {/each}

@@ -4,10 +4,11 @@
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { demoMode } from '$lib/stores/demo';
   import { vault } from '$lib/stores/vault';
   import { cryptoWorker } from '$lib/workers/cryptoClient';
-  import { vaultRepo, transactionRepo, configRepo, dateBucketOf } from '$lib/db/repos';
+  import { vaultRepo, transactionRepo, configRepo, balanceRepo, dateBucketOf } from '$lib/db/repos';
   import {
     serializeConfigTemplate,
     parseConfigTemplate,
@@ -16,9 +17,10 @@
     parseBackup
   } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
+  import { buildStartingBalances, balancesEqual, type BalanceRowDraft } from '$lib/balances/form';
   import { syncStore } from '$lib/stores/sync';
   import { loadClientId } from '$lib/sync/gdrive';
-  import type { AppConfig, Transaction } from '$lib/types';
+  import type { AppConfig, StartingBalances, Transaction } from '$lib/types';
 
   let savedAt = $state<string | null>(null);
   let importError = $state<string | null>(null);
@@ -148,6 +150,71 @@
     }));
   }
 
+  // ----- starting balances (encrypted, never in config) -----
+  // `baseline` is the persisted map; `rows` holds only the keys the user has
+  // edited. Saving is explicit (Confirm changes) and builds a plain object so
+  // the worker can structured-clone it (a $state proxy can't be — that silent
+  // DataCloneError is why balances never saved before).
+  let baseline = $state<StartingBalances>({});
+  let rows = $state<Record<string, BalanceRowDraft>>({});
+  let balancesLoaded = $state(false);
+  let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let saveError = $state<string | null>(null);
+
+  $effect(() => {
+    if (balancesLoaded) return;
+    balances.load().then((b) => {
+      baseline = structuredClone(b);
+      balancesLoaded = true;
+    });
+  });
+
+  // Rows: one per account, plus a catch-all for account-less transactions.
+  const balanceRows = $derived([
+    ...($config?.accounts ?? []).map((a) => ({ key: a.id, name: a.name })),
+    { key: '', name: 'Unassigned (no account)' }
+  ]);
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function baseRow(key: string): BalanceRowDraft {
+    const sb = baseline[key];
+    return { amountStr: sb ? String(sb.amount / 100) : '', asOf: sb?.asOf ?? '' };
+  }
+  const amountValue = (key: string): string => (rows[key] ?? baseRow(key)).amountStr;
+  const dateValue = (key: string): string => (rows[key] ?? baseRow(key)).asOf;
+
+  function setRow(key: string, field: keyof BalanceRowDraft, value: string) {
+    rows[key] = { ...(rows[key] ?? baseRow(key)), [field]: value };
+    if (saveState !== 'idle') saveState = 'idle';
+  }
+
+  // The full edited map (edited rows over the persisted baseline).
+  function currentMap(): StartingBalances {
+    const merged: Record<string, BalanceRowDraft> = {};
+    for (const r of balanceRows) merged[r.key] = rows[r.key] ?? baseRow(r.key);
+    return buildStartingBalances(merged, today());
+  }
+
+  const dirty = $derived(balancesLoaded && !balancesEqual(currentMap(), baseline));
+
+  async function confirmBalances() {
+    if (!dirty) return;
+    saveState = 'saving';
+    saveError = null;
+    try {
+      const next = currentMap(); // fresh plain object — safe to post to the worker
+      await balances.save(next);
+      baseline = next;
+      rows = {};
+      saveState = 'saved';
+      setTimeout(() => saveState === 'saved' && (saveState = 'idle'), 2500);
+    } catch (err) {
+      saveState = 'error';
+      saveError = err instanceof Error ? err.message : 'Could not save balances.';
+    }
+  }
+
   // ----- asset pools -----
   let newPoolName = $state('');
 
@@ -194,11 +261,13 @@
         return;
       }
       const stored = await transactionRepo.allEncrypted();
+      const balancesBlob = await balanceRepo.getBlob();
       const backup = buildBackup({
         config: $config,
         kdf: { saltB64: material.saltB64, iterations: material.iterations },
         verifier: material.verifier,
-        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct }))
+        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct })),
+        balances: balancesBlob ?? undefined
       });
       const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -244,6 +313,7 @@
         verifier: backup.verifier
       });
       await configRepo.save(backup.config);
+      if (backup.balances) await balanceRepo.saveBlob(backup.balances);
       await transactionRepo.clear();
       if (txs.length) {
         await transactionRepo.bulkUpdateBlobs(
@@ -290,9 +360,18 @@
     patch((c) => ({ ...c, meta: { ...c.meta, locale: v } }));
   }
 
-  // ----- anomaly thresholds (stored only; detection ships in a later update) -----
+  // ----- anomaly thresholds -----
   function setAnomaly(key: keyof AppConfig['settings']['anomaly'], v: number) {
     patch((c) => ({ ...c, settings: { ...c.settings, anomaly: { ...c.settings.anomaly, [key]: v } } }));
+  }
+
+  // "Sensitivity" is a friendlier face for the MAD multiplier: a lower k flags
+  // more (higher sensitivity), a higher k only flags bigger surprises.
+  const LEVEL_TO_MADK: Record<string, number> = { high: 2, medium: 3, low: 4 };
+  function madKLevel(k: number): 'high' | 'medium' | 'low' {
+    if (k <= 2.5) return 'high';
+    if (k < 3.5) return 'medium';
+    return 'low';
   }
 
   // ----- config template export / import (plaintext, financial-data-free) -----
@@ -385,30 +464,6 @@
     </div>
   </Card>
 
-  <!-- Anomaly thresholds -->
-  <Card>
-    <h2 class="card-title mb-1">Anomaly detection</h2>
-    <p class="mb-4 text-xs text-muted">Flags categories whose spending this month is a robust outlier above their recent baseline. Shown on the dashboard Anomalies card.</p>
-    <div class="grid gap-4 sm:grid-cols-2">
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Baseline months</span>
-        <input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Threshold (%)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Min absolute (minor units)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.minAbsolute ?? 5000} onchange={(e) => setAnomaly('minAbsolute', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">MAD multiplier (k)</span>
-        <input type="number" min="0" step="0.1" value={$config?.settings.anomaly.madK ?? 3} onchange={(e) => setAnomaly('madK', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-    </div>
-  </Card>
-
   <!-- Categories -->
   <Card>
     <div class="mb-1 flex items-center justify-between gap-2">
@@ -476,6 +531,169 @@
     </div>
   </Card>
 
+  <!-- Accounts -->
+  <Card>
+    <h2 class="card-title mb-1">Accounts</h2>
+    <p class="mb-4 text-xs text-muted">Where transactions live. Group accounts into pools below to track balances and goals.</p>
+
+    {#if ($config?.accounts ?? []).length > 0}
+      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
+        {#each $config?.accounts ?? [] as acc (acc.id)}
+          <li class="flex items-center gap-2 py-2">
+            <input
+              type="text"
+              value={acc.name}
+              onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
+              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+            <select
+              value={acc.kind}
+              onchange={(e) => updateAccount(acc.id, 'kind', e.currentTarget.value)}
+              class="h-8 shrink-0 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            >
+              <option value="bank">Bank</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="savings">Savings</option>
+            </select>
+            <button
+              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+              onclick={() => deleteAccount(acc.id)}
+              title="Delete account"
+            >
+              <Trash class="h-4 w-4" />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="mb-4 text-sm text-muted">No accounts yet.</p>
+    {/if}
+
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
+      <div class="flex gap-2">
+        <select bind:value={newAccKind} class="h-9 flex-1 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50 sm:flex-none">
+          <option value="bank">Bank</option>
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="savings">Savings</option>
+        </select>
+        <button class="press flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:flex-none" onclick={addAccount} disabled={!newAccName.trim()}>
+          <Plus class="h-4 w-4" /> Add
+        </button>
+      </div>
+    </div>
+  </Card>
+
+  <!-- Account balances -->
+  <Card>
+    <h2 class="card-title mb-1">Account balances</h2>
+    <p class="mb-2 text-xs text-muted">
+      Your real balance for each account as of a date — the number your bank shows today is
+      easiest. The dashboard's <span class="font-medium text-ink">Liquid balance</span> is this
+      starting figure plus every transaction since, so it reflects the actual money on hand.
+      Stored encrypted; never in the shareable config or template. Leave an amount blank to clear
+      its anchor.
+    </p>
+    {#if ($config?.accounts ?? []).length === 0}
+      <p class="mb-4 text-xs text-warn">
+        No accounts yet — add your bank account in <span class="font-medium">Accounts</span> above,
+        then its balance will appear here.
+      </p>
+    {/if}
+
+    <ul class="divide-y divide-hairline border-y border-hairline">
+      {#each balanceRows as row (row.key)}
+        <li class="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+          <span class="min-w-0 flex-1 truncate text-sm text-ink">{row.name}</span>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
+                {$config?.meta.currency ?? ''}
+              </span>
+              <input
+                type="text"
+                inputmode="decimal"
+                value={amountValue(row.key)}
+                oninput={(e) => setRow(row.key, 'amountStr', e.currentTarget.value)}
+                placeholder="0.00"
+                aria-label="{row.name} starting balance"
+                class="h-9 w-32 rounded-control border border-hairline bg-surface py-0 pl-12 pr-2.5 text-right text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              />
+            </div>
+            <input
+              type="date"
+              value={dateValue(row.key)}
+              oninput={(e) => setRow(row.key, 'asOf', e.currentTarget.value)}
+              aria-label="{row.name} balance date"
+              class="h-9 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+        </li>
+      {/each}
+    </ul>
+
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onclick={confirmBalances}
+        disabled={!dirty || saveState === 'saving'}
+        class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+      >
+        <Check class="h-4 w-4" />
+        {saveState === 'saving' ? 'Saving…' : 'Confirm changes'}
+      </button>
+      {#if saveState === 'saved'}
+        <span class="flex items-center gap-1 text-xs text-income"><Check class="h-3.5 w-3.5" /> Saved</span>
+      {:else if saveState === 'error'}
+        <span class="text-xs text-expense">{saveError}</span>
+      {:else if dirty}
+        <span class="text-xs text-muted">Unsaved changes</span>
+      {/if}
+    </div>
+  </Card>
+
+  <!-- Advanced settings (collapsed by default) -->
+  <details class="group">
+    <summary class="flex cursor-pointer select-none items-center gap-2 py-1 text-sm font-medium text-muted hover:text-ink">
+      <span class="transition-transform group-open:rotate-90">›</span>
+      Advanced settings
+    </summary>
+    <p class="mb-4 mt-1 pl-5 text-xs text-muted">
+      Anomaly tuning, tags, asset pools, backups, sync and reset. You can ignore these to start.
+    </p>
+    <div class="space-y-6">
+
+  <!-- Anomaly detection -->
+  <Card>
+    <h2 class="card-title mb-1">Anomaly detection</h2>
+    <p class="mb-4 text-xs text-muted">Flags a category when its spending this month jumps unusually above its recent months — surfaced on the dashboard Anomalies card.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Months to compare against</span>
+        <input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} class={inputCls} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum increase (%)</span>
+        <input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} class={inputCls} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum amount ({$config?.meta.currency ?? ''})</span>
+        <input type="number" min="0" step="0.01" value={($config?.settings.anomaly.minAbsolute ?? 5000) / 100} onchange={(e) => setAnomaly('minAbsolute', Math.round(parseFloat(e.currentTarget.value || '0') * 100))} class={inputCls} />
+        <span class="text-[11px] text-muted/80">Ignore jumps smaller than this.</span>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Sensitivity</span>
+        <select value={madKLevel($config?.settings.anomaly.madK ?? 3)} onchange={(e) => setAnomaly('madK', LEVEL_TO_MADK[e.currentTarget.value] ?? 3)} class={inputCls}>
+          <option value="high">High — flag more</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low — only big surprises</option>
+        </select>
+      </label>
+    </div>
+  </Card>
+
   <!-- Tags -->
   <Card>
     <h2 class="card-title mb-1">Tags</h2>
@@ -531,61 +749,6 @@
       >
         <Plus class="h-4 w-4" /> Add
       </button>
-    </div>
-  </Card>
-
-  <!-- Accounts -->
-  <Card>
-    <h2 class="card-title mb-1">Accounts</h2>
-    <p class="mb-4 text-xs text-muted">Where transactions live. Group accounts into pools below to track balances and goals.</p>
-
-    {#if ($config?.accounts ?? []).length > 0}
-      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
-        {#each $config?.accounts ?? [] as acc (acc.id)}
-          <li class="flex items-center gap-2 py-2">
-            <input
-              type="text"
-              value={acc.name}
-              onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            />
-            <select
-              value={acc.kind}
-              onchange={(e) => updateAccount(acc.id, 'kind', e.currentTarget.value)}
-              class="h-8 shrink-0 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            >
-              <option value="bank">Bank</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="savings">Savings</option>
-            </select>
-            <button
-              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
-              onclick={() => deleteAccount(acc.id)}
-              title="Delete account"
-            >
-              <Trash class="h-4 w-4" />
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="mb-4 text-sm text-muted">No accounts yet.</p>
-    {/if}
-
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
-      <div class="flex gap-2">
-        <select bind:value={newAccKind} class="h-9 flex-1 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50 sm:flex-none">
-          <option value="bank">Bank</option>
-          <option value="cash">Cash</option>
-          <option value="card">Card</option>
-          <option value="savings">Savings</option>
-        </select>
-        <button class="press flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:flex-none" onclick={addAccount} disabled={!newAccName.trim()}>
-          <Plus class="h-4 w-4" /> Add
-        </button>
-      </div>
     </div>
   </Card>
 
@@ -842,4 +1005,7 @@
       </div>
     </div>
   </Card>
+
+    </div>
+  </details>
 </div>

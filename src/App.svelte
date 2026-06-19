@@ -12,10 +12,14 @@
   import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
   import PlanView from '$lib/components/plan/PlanView.svelte';
   import SettingsView from '$lib/components/settings/SettingsView.svelte';
+  import StartView from '$lib/components/start/StartView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
+  import { returnToStart } from '$lib/stores/start-ui';
+  import { ArrowLeft, X } from 'phosphor-svelte';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
 
   let sidebarOpen = $state(false);
@@ -47,6 +51,7 @@
   }
 
   const titles: Record<string, string> = {
+    start: 'Getting started',
     dashboard: 'Dashboard',
     import: 'Import',
     transactions: 'Transactions',
@@ -80,14 +85,42 @@
   });
 
   // Load config + transactions once unlocked; reset cache on lock.
+  // On the very first unlock on this device, send the user to the Getting-started
+  // page once (tracked in localStorage). It stays reachable from the sidebar after.
+  let onboardChecked = false;
   $effect(() => {
     if (status === 'unlocked') {
       config.load();
       transactions.loadAll();
+      balances.load();
+      if (!onboardChecked) {
+        onboardChecked = true;
+        maybeRedirectToStart();
+      }
     } else if (status === 'locked') {
       transactions.reset();
+      balances.reset();
     }
   });
+
+  // Clear the "back to start" affordance once the user is back on the page.
+  $effect(() => {
+    if (route === 'start') returnToStart.set(false);
+  });
+
+  function maybeRedirectToStart() {
+    try {
+      if (localStorage.getItem('crescent.onboarded') === '1') return;
+      // Mark immediately so we only ever auto-redirect once, never in a loop.
+      localStorage.setItem('crescent.onboarded', '1');
+    } catch {
+      return; // storage disabled — don't auto-redirect
+    }
+    // Only when landing on the default route; respect any explicit deep link.
+    if (currentRoute() === 'dashboard') {
+      location.hash = 'start';
+    }
+  }
 </script>
 
 {#if status === 'loading'}
@@ -99,7 +132,7 @@
 {:else if !devBypass && (status === 'locked' || status === 'unlocking')}
   <LockScreen />
 {:else}
-  <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
+  <div class="flex h-[100dvh] w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
     <!-- Left sidebar overlay -->
     {#if sidebarOpen}
       <button
@@ -133,11 +166,33 @@
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
+      {#if $returnToStart && route !== 'start'}
+        <div
+          class="flex items-center justify-between gap-2 border-b border-accent/20 bg-accent/5 px-4 py-1.5"
+          transition:fade={{ duration: 150 }}
+        >
+          <a
+            href="#start"
+            class="press flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+          >
+            <ArrowLeft class="h-4 w-4" /> Back to Getting started
+          </a>
+          <button
+            class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink"
+            onclick={() => returnToStart.set(false)}
+            aria-label="Dismiss"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+      {/if}
       <main
         class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
-        {#if route === 'import'}
+        {#if route === 'start'}
+          <StartView />
+        {:else if route === 'import'}
           <ImportView />
         {:else if route === 'transactions'}
           <TransactionsView />
