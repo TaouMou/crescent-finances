@@ -1,5 +1,6 @@
 <script lang="ts">
   import { List, Faders } from 'phosphor-svelte';
+  import { Button } from '$lib/components/ui/button';
 
   let {
     title = 'Dashboard',
@@ -18,22 +19,26 @@
   <!-- Accent aurora glow along the top edge -->
   <div class="topbar-aurora pointer-events-none absolute inset-0" aria-hidden="true"></div>
 
-  <button
-    class="press control-well relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-control text-muted hover:text-ink active:bg-ink/10"
+  <Button
+    variant="ghost"
+    size="icon"
+    class="control-well relative z-10 shrink-0 text-muted hover:text-ink"
     onclick={() => onMenu?.()}
     aria-label="Open menu"
   >
     <List class="h-5 w-5" />
-  </button>
+  </Button>
   <h1 class="relative z-10 min-w-0 truncate text-base font-medium text-ink">{title}</h1>
 
   <div class="relative z-10 ml-auto">
-    <button
-      class="press control-well grid h-9 w-9 shrink-0 place-items-center rounded-control text-muted hover:text-ink active:bg-ink/10"
+    <Button
+      variant="ghost"
+      size="icon"
+      class="control-well shrink-0 text-muted hover:text-ink"
       onclick={() => onPanel?.()}
       aria-label="Toggle details panel"
     >
       <Faders class="h-[18px] w-[18px]" />
-    </button>
+    </Button>
   </div>
 </header>

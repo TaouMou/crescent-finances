@@ -23,6 +23,24 @@
   --dur-base: 200ms;
   --dur-slow: 250ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Shadcn-svelte semantic aliases (channel triples, aliased from --c-*) ── */
+  --background: var(--c-paper);
+  --foreground: var(--c-ink);
+  --card: var(--c-surface);
+  --card-foreground: var(--c-ink);
+  --popover: var(--c-surface);
+  --popover-foreground: var(--c-ink);
+  --primary: var(--c-accent);
+  --primary-foreground: 255 255 255;
+  --secondary: var(--c-paper-deep);
+  --secondary-foreground: var(--c-ink);
+  --destructive: var(--c-expense);
+  --destructive-foreground: 255 255 255;
+  --border: var(--c-hairline);
+  --input: var(--c-hairline);
+  --ring: var(--c-accent);
+  --radius: 8px;
 }
 
 .dark {
@@ -40,6 +58,9 @@
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 22px -6px rgb(0 0 0 / 0.5),
     0 18px 40px -12px rgb(0 0 0 / 0.45);
+
+  /* Dark-mode overrides for semantic tokens that don't alias from --c-* */
+  --secondary: 40 45 49;
 }
 
 @media (prefers-reduced-motion: reduce) {

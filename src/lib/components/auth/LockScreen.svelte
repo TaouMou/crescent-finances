@@ -1,7 +1,8 @@
 <script lang="ts">
   import { Lock, ShieldCheck, Warning, Eye, EyeSlash } from 'phosphor-svelte';
   import { vault } from '$lib/stores/vault';
-  import { cn } from '$lib/utils/cn';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
 
   // First run when there is no vault yet; otherwise we are unlocking.
   let { firstRun = false }: { firstRun?: boolean } = $props();
@@ -77,8 +78,8 @@
 
     <form onsubmit={submit} class="flex flex-col gap-3">
       <label class="sr-only" for="passphrase">Passphrase</label>
-      <div class="field-pill">
-        <input
+      <div class="relative">
+        <Input
           id="passphrase"
           type={show ? 'text' : 'password'}
           bind:value={passphrase}
@@ -87,33 +88,33 @@
           autocapitalize="off"
           autocorrect="off"
           spellcheck="false"
-          class="field-input"
+          class="h-11 pr-10 text-[0.9375rem]"
         />
-        <button
+        <Button
           type="button"
-          class="press text-muted hover:text-ink"
+          variant="ghost"
+          size="icon"
+          class="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted hover:text-ink"
           aria-label={show ? 'Hide passphrase' : 'Show passphrase'}
           onclick={() => (show = !show)}
         >
           {#if show}<EyeSlash size={18} />{:else}<Eye size={18} />{/if}
-        </button>
+        </Button>
       </div>
 
       {#if firstRun}
         <label class="sr-only" for="confirm">Confirm passphrase</label>
-        <div class="field-pill">
-          <input
-            id="confirm"
-            type={show ? 'text' : 'password'}
-            bind:value={confirm}
-            placeholder="Confirm passphrase"
-            autocomplete="new-password"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-            class="field-input"
-          />
-        </div>
+        <Input
+          id="confirm"
+          type={show ? 'text' : 'password'}
+          bind:value={confirm}
+          placeholder="Confirm passphrase"
+          autocomplete="new-password"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          class="h-11 text-[0.9375rem]"
+        />
       {/if}
 
       {#if tooShort}
@@ -136,17 +137,17 @@
         <p class="px-1 text-xs text-muted/80">Locks automatically after 1 hour of inactivity.</p>
       {/if}
 
-      <button type="submit" class={cn('submit-btn press', !canSubmit && 'opacity-50')} disabled={!canSubmit}>
+      <Button type="submit" class="mt-1 h-11 w-full text-[0.9375rem]" disabled={!canSubmit}>
         {#if busy}
           {firstRun ? 'Setting up…' : 'Unlocking…'}
         {:else}
           {firstRun ? 'Create vault' : 'Unlock'}
         {/if}
-      </button>
+      </Button>
     </form>
 
     {#if firstRun}
-      <div class="warn-panel mt-5 flex items-start gap-2 rounded-control p-3">
+      <div class="mt-5 flex items-start gap-2 rounded-control border border-warn/30 bg-surface p-3 shadow-sm">
         <span class="mt-0.5 text-warn"><Warning size={16} weight="fill" /></span>
         <p class="text-xs leading-relaxed text-muted">
           There is no recovery. If you lose this passphrase, your data cannot be decrypted — not by
@@ -321,50 +322,4 @@
     60%       { transform: translate(-3%, -3%) scale(1.03); }
   }
 
-  .field-pill {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 44px;
-    padding: 0 0.875rem;
-    border-radius: var(--radius-control, 6px);
-    border: 1px solid rgb(var(--c-hairline));
-    background-color: rgb(var(--c-surface));
-    box-shadow: 0 1px 2px rgb(26 29 33 / 0.03);
-  }
-  .field-input {
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: rgb(var(--c-ink));
-    font-size: 0.9375rem;
-  }
-  .field-input::placeholder {
-    color: rgb(var(--c-muted));
-  }
-
-  .submit-btn {
-    margin-top: 0.25rem;
-    min-height: 44px;
-    border-radius: var(--radius-control, 6px);
-    background-color: rgb(var(--c-accent));
-    color: rgb(255 255 255);
-    font-weight: 500;
-    font-size: 0.9375rem;
-  }
-  .submit-btn:disabled {
-    cursor: not-allowed;
-  }
-
-  /* Opaque surface (matching the inputs) with the amber tint layered on top, so
-     the recovery warning sits clearly above the bokeh instead of letting the
-     side glows bleed through it. */
-  .warn-panel {
-    background-color: rgb(var(--c-surface));
-    background-image: linear-gradient(rgb(var(--c-warn) / 0.08), rgb(var(--c-warn) / 0.08));
-    border: 1px solid rgb(var(--c-warn) / 0.3);
-    box-shadow: 0 1px 2px rgb(26 29 33 / 0.05);
-  }
 </style>

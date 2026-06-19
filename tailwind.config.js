@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Brand palette (existing — unchanged so existing classes keep working)
         paper: withAlpha('--c-paper'),
         surface: withAlpha('--c-surface'),
         ink: withAlpha('--c-ink'),
@@ -15,7 +16,33 @@ export default {
         accent: withAlpha('--c-accent'),
         income: withAlpha('--c-income'),
         expense: withAlpha('--c-expense'),
-        warn: withAlpha('--c-warn')
+        warn: withAlpha('--c-warn'),
+        // Shadcn-svelte semantic tokens (added alongside, no name collisions)
+        background: withAlpha('--background'),
+        foreground: withAlpha('--foreground'),
+        card: {
+          DEFAULT: withAlpha('--card'),
+          foreground: withAlpha('--card-foreground')
+        },
+        popover: {
+          DEFAULT: withAlpha('--popover'),
+          foreground: withAlpha('--popover-foreground')
+        },
+        primary: {
+          DEFAULT: withAlpha('--primary'),
+          foreground: withAlpha('--primary-foreground')
+        },
+        secondary: {
+          DEFAULT: withAlpha('--secondary'),
+          foreground: withAlpha('--secondary-foreground')
+        },
+        destructive: {
+          DEFAULT: withAlpha('--destructive'),
+          foreground: withAlpha('--destructive-foreground')
+        },
+        border: withAlpha('--border'),
+        input: withAlpha('--input'),
+        ring: withAlpha('--ring')
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
@@ -28,17 +55,20 @@ export default {
         xl: ['1.75rem', { lineHeight: '2.125rem' }],
         '2xl': ['2.25rem', { lineHeight: '2.5rem' }]
       },
-      spacing: {
-        // 4px base scale already covered by defaults; explicit aliases for clarity
-      },
+      spacing: {},
       borderRadius: {
+        // Existing
         card: '8px',
-        control: '6px'
+        control: '6px',
+        // Shadcn semantic (derived from --radius token)
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
       },
       transitionTimingFunction: {
         out: 'cubic-bezier(0.16, 1, 0.3, 1)'
       }
     }
   },
-  plugins: []
+  plugins: [require('tailwindcss-animate')]
 };
