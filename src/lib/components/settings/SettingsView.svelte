@@ -17,7 +17,7 @@
     parseBackup
   } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
-  import { parseMoneyInput } from '$lib/utils/currency';
+  import { buildStartingBalances, balancesEqual, type BalanceRowDraft } from '$lib/balances/form';
   import { syncStore } from '$lib/stores/sync';
   import { loadClientId } from '$lib/sync/gdrive';
   import type { AppConfig, StartingBalances, Transaction } from '$lib/types';
@@ -151,18 +151,20 @@
   }
 
   // ----- starting balances (encrypted, never in config) -----
-  let startingBalances = $state<StartingBalances>({});
+  // `baseline` is the persisted map; `rows` holds only the keys the user has
+  // edited. Saving is explicit (Confirm changes) and builds a plain object so
+  // the worker can structured-clone it (a $state proxy can't be — that silent
+  // DataCloneError is why balances never saved before).
+  let baseline = $state<StartingBalances>({});
+  let rows = $state<Record<string, BalanceRowDraft>>({});
   let balancesLoaded = $state(false);
-  // What the user is currently typing per row, so reformatting never fights the
-  // caret while they enter decimals. Falls back to the stored value for display.
-  let amountDrafts = $state<Record<string, string>>({});
-  // Row key that just saved, for a brief inline "Saved" confirmation.
-  let savedRow = $state<string | null>(null);
+  let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let saveError = $state<string | null>(null);
 
   $effect(() => {
     if (balancesLoaded) return;
     balances.load().then((b) => {
-      startingBalances = structuredClone(b);
+      baseline = structuredClone(b);
       balancesLoaded = true;
     });
   });
@@ -175,47 +177,42 @@
 
   const today = () => new Date().toISOString().slice(0, 10);
 
-  // The amount shown in the input: the live draft if any, else the stored value.
-  function amountValue(key: string): string {
-    if (key in amountDrafts) return amountDrafts[key];
-    const sb = startingBalances[key];
-    return sb ? String(sb.amount / 100) : '';
+  function baseRow(key: string): BalanceRowDraft {
+    const sb = baseline[key];
+    return { amountStr: sb ? String(sb.amount / 100) : '', asOf: sb?.asOf ?? '' };
+  }
+  const amountValue = (key: string): string => (rows[key] ?? baseRow(key)).amountStr;
+  const dateValue = (key: string): string => (rows[key] ?? baseRow(key)).asOf;
+
+  function setRow(key: string, field: keyof BalanceRowDraft, value: string) {
+    rows[key] = { ...(rows[key] ?? baseRow(key)), [field]: value };
+    if (saveState !== 'idle') saveState = 'idle';
   }
 
-  async function persistBalances(savedKey?: string) {
-    await balances.save(startingBalances);
-    savedAt = 'Saved';
-    setTimeout(() => (savedAt = null), 2000);
-    if (savedKey !== undefined) {
-      savedRow = savedKey;
-      setTimeout(() => savedRow === savedKey && (savedRow = null), 1800);
+  // The full edited map (edited rows over the persisted baseline).
+  function currentMap(): StartingBalances {
+    const merged: Record<string, BalanceRowDraft> = {};
+    for (const r of balanceRows) merged[r.key] = rows[r.key] ?? baseRow(r.key);
+    return buildStartingBalances(merged, today());
+  }
+
+  const dirty = $derived(balancesLoaded && !balancesEqual(currentMap(), baseline));
+
+  async function confirmBalances() {
+    if (!dirty) return;
+    saveState = 'saving';
+    saveError = null;
+    try {
+      const next = currentMap(); // fresh plain object — safe to post to the worker
+      await balances.save(next);
+      baseline = next;
+      rows = {};
+      saveState = 'saved';
+      setTimeout(() => saveState === 'saved' && (saveState = 'idle'), 2500);
+    } catch (err) {
+      saveState = 'error';
+      saveError = err instanceof Error ? err.message : 'Could not save balances.';
     }
-  }
-
-  // Debounce the encrypt+write so typing doesn't hammer the worker, but update
-  // the in-memory map synchronously so a value is never lost on navigation.
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
-  function applyAmount(key: string, raw: string, immediate: boolean) {
-    amountDrafts[key] = raw;
-    const minor = parseMoneyInput(raw);
-    const next = { ...startingBalances };
-    if (minor === null) delete next[key];
-    else next[key] = { amount: minor, asOf: next[key]?.asOf ?? today() };
-    startingBalances = next;
-    if (saveTimer) clearTimeout(saveTimer);
-    if (immediate) {
-      void persistBalances(key);
-    } else {
-      saveTimer = setTimeout(() => void persistBalances(key), 300);
-    }
-  }
-
-  function setBalanceDate(key: string, date: string) {
-    if (!date) return;
-    const next = { ...startingBalances };
-    next[key] = { amount: next[key]?.amount ?? 0, asOf: date };
-    startingBalances = next;
-    void persistBalances(key);
   }
 
   // ----- asset pools -----
@@ -609,12 +606,7 @@
     <ul class="divide-y divide-hairline border-y border-hairline">
       {#each balanceRows as row (row.key)}
         <li class="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
-          <span class="flex min-w-0 flex-1 items-center gap-2 truncate text-sm text-ink">
-            {row.name}
-            {#if savedRow === row.key}
-              <span class="flex shrink-0 items-center gap-0.5 text-xs text-income"><Check class="h-3 w-3" /> Saved</span>
-            {/if}
-          </span>
+          <span class="min-w-0 flex-1 truncate text-sm text-ink">{row.name}</span>
           <div class="flex items-center gap-2">
             <div class="relative">
               <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
@@ -624,8 +616,7 @@
                 type="text"
                 inputmode="decimal"
                 value={amountValue(row.key)}
-                oninput={(e) => applyAmount(row.key, e.currentTarget.value, false)}
-                onchange={(e) => applyAmount(row.key, e.currentTarget.value, true)}
+                oninput={(e) => setRow(row.key, 'amountStr', e.currentTarget.value)}
                 placeholder="0.00"
                 aria-label="{row.name} starting balance"
                 class="h-9 w-32 rounded-control border border-hairline bg-surface py-0 pl-12 pr-2.5 text-right text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
@@ -633,8 +624,8 @@
             </div>
             <input
               type="date"
-              value={startingBalances[row.key]?.asOf ?? ''}
-              onchange={(e) => setBalanceDate(row.key, e.currentTarget.value)}
+              value={dateValue(row.key)}
+              oninput={(e) => setRow(row.key, 'asOf', e.currentTarget.value)}
               aria-label="{row.name} balance date"
               class="h-9 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
             />
@@ -642,6 +633,25 @@
         </li>
       {/each}
     </ul>
+
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onclick={confirmBalances}
+        disabled={!dirty || saveState === 'saving'}
+        class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+      >
+        <Check class="h-4 w-4" />
+        {saveState === 'saving' ? 'Saving…' : 'Confirm changes'}
+      </button>
+      {#if saveState === 'saved'}
+        <span class="flex items-center gap-1 text-xs text-income"><Check class="h-3.5 w-3.5" /> Saved</span>
+      {:else if saveState === 'error'}
+        <span class="text-xs text-expense">{saveError}</span>
+      {:else if dirty}
+        <span class="text-xs text-muted">Unsaved changes</span>
+      {/if}
+    </div>
   </Card>
 
   <!-- Advanced settings (collapsed by default) -->

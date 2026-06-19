@@ -18,6 +18,8 @@
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
   import { balances } from '$lib/stores/balances';
+  import { returnToStart } from '$lib/stores/start-ui';
+  import { ArrowLeft, X } from 'phosphor-svelte';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
 
   let sidebarOpen = $state(false);
@@ -101,6 +103,11 @@
     }
   });
 
+  // Clear the "back to start" affordance once the user is back on the page.
+  $effect(() => {
+    if (route === 'start') returnToStart.set(false);
+  });
+
   function maybeRedirectToStart() {
     try {
       if (localStorage.getItem('crescent.onboarded') === '1') return;
@@ -159,6 +166,26 @@
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
+      {#if $returnToStart && route !== 'start'}
+        <div
+          class="flex items-center justify-between gap-2 border-b border-accent/20 bg-accent/5 px-4 py-1.5"
+          transition:fade={{ duration: 150 }}
+        >
+          <a
+            href="#start"
+            class="press flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+          >
+            <ArrowLeft class="h-4 w-4" /> Back to Getting started
+          </a>
+          <button
+            class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink"
+            onclick={() => returnToStart.set(false)}
+            aria-label="Dismiss"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+      {/if}
       <main
         class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"

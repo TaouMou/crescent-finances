@@ -13,8 +13,15 @@
   let {
     steps,
     showDemo = false,
-    ondismiss
-  }: { steps: SetupStep[]; showDemo?: boolean; ondismiss?: () => void } = $props();
+    ondismiss,
+    onnavigate
+  }: {
+    steps: SetupStep[];
+    showDemo?: boolean;
+    ondismiss?: () => void;
+    /** Fired when a step link is followed (e.g. to show a "back" affordance). */
+    onnavigate?: () => void;
+  } = $props();
 
   const done = $derived(steps.filter((s) => s.done).length);
   const pct = $derived(steps.length ? Math.round((done / steps.length) * 100) : 0);
@@ -54,6 +61,7 @@
       <li>
         <a
           href={s.href}
+          onclick={() => onnavigate?.()}
           class={`group flex items-center gap-3 rounded-control border p-3 transition-colors ${
             s.done
               ? 'border-hairline'

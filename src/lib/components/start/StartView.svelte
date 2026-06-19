@@ -15,6 +15,7 @@
   import { deriveSetupSteps } from '$lib/onboarding/steps';
   import { planTemplates, type PlanTemplate } from '$lib/sections/templates';
   import { safeParseConfig } from '$lib/config/schema';
+  import { returnToStart } from '$lib/stores/start-ui';
 
   const txCount = transactions;
 
@@ -78,6 +79,7 @@
     await config.save(next);
     applying = false;
     appliedId = t.id;
+    returnToStart.set(true);
     location.hash = '#plan';
   }
 </script>
@@ -115,7 +117,7 @@
   <!-- 2. First 15 minutes -->
   <section class="space-y-3">
     <h2 class="card-title">Your first 15 minutes</h2>
-    <SetupChecklist {steps} />
+    <SetupChecklist {steps} onnavigate={() => returnToStart.set(true)} />
   </section>
 
   <!-- 3. Recipe gallery -->
