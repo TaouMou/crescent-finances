@@ -373,9 +373,9 @@
         Start from a template, or build your own.
       </p>
     </div>
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
       <!-- Month picker -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center justify-center gap-1 sm:justify-start">
         <button
           class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           onclick={prevMonth}
@@ -395,7 +395,7 @@
         </button>
       </div>
       <button
-        class="press flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
+        class="press flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
         onclick={newGroup}
       >
         <Plus class="h-4 w-4 shrink-0" /> New budget

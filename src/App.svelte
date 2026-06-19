@@ -132,7 +132,7 @@
 {:else if !devBypass && (status === 'locked' || status === 'unlocking')}
   <LockScreen />
 {:else}
-  <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
+  <div class="flex h-[100dvh] w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
     <!-- Left sidebar overlay -->
     {#if sidebarOpen}
       <button
