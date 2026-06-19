@@ -189,3 +189,29 @@ describe('monthlyNets', () => {
     expect(monthlyNets([])).toHaveLength(0);
   });
 });
+
+describe('input-identity memoization', () => {
+  const txs = [
+    makeTx({ id: '1', date: '2026-01-01', amount: 10000, categoryId: 'cat-food' }),
+    makeTx({ id: '2', date: '2026-02-01', amount: -5000, categoryId: 'cat-rent' })
+  ];
+
+  it('returns the same reference for repeat calls with the same array', () => {
+    expect(summarize(txs)).toBe(summarize(txs));
+    expect(monthlyNets(txs)).toBe(monthlyNets(txs));
+    expect(categoryBreakdown(txs, categories)).toBe(categoryBreakdown(txs, categories));
+    const starting: StartingBalances = {};
+    expect(liquidBalance(txs, starting)).toBe(liquidBalance(txs, starting));
+  });
+
+  it('recomputes (equal value) when the array reference changes', () => {
+    const a = summarize(txs);
+    const b = summarize([...txs]);
+    expect(b).not.toBe(a);
+    expect(b).toEqual(a);
+    const m = categoryBreakdown(txs, categories);
+    const m2 = categoryBreakdown([...txs], categories);
+    expect(m2).not.toBe(m);
+    expect(m2).toEqual(m);
+  });
+});

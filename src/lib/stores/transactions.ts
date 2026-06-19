@@ -92,6 +92,9 @@ function createTransactionsStore() {
    * Returns the number of transactions that changed.
    */
   async function applyAndSave(cfg: AppConfig): Promise<number> {
+    // No rules ⇒ applyRules is a no-op, so nothing can change. Skip decrypting and
+    // re-scanning the whole table.
+    if (!cfg.rules?.length) return 0;
     loading.set(true);
     try {
       const stored = await transactionRepo.allEncrypted();

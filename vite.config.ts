@@ -26,6 +26,20 @@ export default defineConfig({
     }
   },
   worker: { format: 'es' },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the larger libraries into their own cacheable chunks so they
+        // don't bloat the entry bundle. Route views are already code-split via
+        // dynamic import() in App.svelte; uPlot/papaparse are lazy-loaded at the
+        // call site, so they get their own chunks automatically.
+        manualChunks: {
+          dexie: ['dexie'],
+          zod: ['zod']
+        }
+      }
+    }
+  },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.{test,spec}.ts'],

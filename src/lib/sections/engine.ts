@@ -16,26 +16,42 @@
 
 import type { AssetPool, Section, SectionCalc, SectionGroup, Transaction } from '$lib/types';
 import type { DistributionGroup, DistributionSection, SectionKind, TargetSection } from '$lib/seed/dashboard';
-import { accountsBalance, summarize } from '$lib/aggregations';
+import { summarize } from '$lib/aggregations';
 import { filterSum } from './filter';
 
 type TargetCalc = Extract<SectionCalc, { type: 'target' }>;
 
+/** Signed balance per (non-null) account, scoped to txs dated on/before `to`. */
+type AccountBalances = Map<string, number>;
+
 /**
- * Net balance of the named asset pool; 0 if unknown.
- * Pass `to` to sum only transactions on or before that ISO date (cumulative-as-of).
+ * Net balance of every account in a single pass, so a plan with many
+ * pool-backed sections/goals doesn't re-scan the full transaction list once per
+ * section. Pass `to` to sum only transactions on or before that ISO date
+ * (cumulative-as-of); omit for the all-time balance.
  */
+function accountBalanceIndex(txs: Transaction[], to?: string): AccountBalances {
+  const balances: AccountBalances = new Map();
+  for (const tx of txs) {
+    if (tx.accountId === null) continue;
+    if (to && tx.date > to) continue;
+    balances.set(tx.accountId, (balances.get(tx.accountId) ?? 0) + tx.amount);
+  }
+  return balances;
+}
+
+/** Net balance of the named asset pool from a precomputed index; 0 if unknown. */
 function poolBalance(
   pools: AssetPool[],
   assetPoolId: string | undefined,
-  txs: Transaction[],
-  to?: string
+  balances: AccountBalances
 ): number {
   if (!assetPoolId) return 0;
   const pool = pools.find((p) => p.id === assetPoolId);
   if (!pool) return 0;
-  const filtered = to ? txs.filter((tx) => tx.date <= to) : txs;
-  return accountsBalance(filtered, pool.accountIds);
+  let sum = 0;
+  for (const id of pool.accountIds) sum += balances.get(id) ?? 0;
+  return sum;
 }
 
 /** Sections belonging to a group (by back-reference or group membership list), ordered. */
@@ -62,7 +78,8 @@ export function evaluateDistribution(
   txs: Transaction[],
   pools: AssetPool[] = [],
   from?: string,
-  to?: string
+  to?: string,
+  balances: AccountBalances = accountBalanceIndex(txs, to)
 ): DistributionGroup {
   const total = summarize(txs, from, to).income;
   const members = sectionsOfGroup(group, sections).filter((s) => s.calc.type !== 'target');
@@ -74,7 +91,7 @@ export function evaluateDistribution(
     if (c.type === 'percentage') planned.set(s.id, Math.round((c.percent / 100) * total));
     else if (c.type === 'fixed') planned.set(s.id, c.amount);
     else if (c.type === 'filterSum') planned.set(s.id, c.planned ?? 0);
-    else if (c.type === 'accountBalance') planned.set(s.id, Math.abs(poolBalance(pools, c.assetPoolId, txs, to)));
+    else if (c.type === 'accountBalance') planned.set(s.id, Math.abs(poolBalance(pools, c.assetPoolId, balances)));
   }
   // Second pass: remainder absorbs whatever income is left after the rest.
   const allocated = [...planned.values()].reduce((a, b) => a + b, 0);
@@ -126,7 +143,8 @@ export function evaluateTargets(
   sections: Section[],
   txs: Transaction[] = [],
   pools: AssetPool[] = [],
-  to?: string
+  to?: string,
+  balances: AccountBalances = accountBalanceIndex(txs, to)
 ): TargetSection[] {
   return sections
     .filter((s) => s.calc.type === 'target')
@@ -137,7 +155,7 @@ export function evaluateTargets(
         id: s.id,
         name: s.name,
         color: s.color,
-        current: Math.max(0, poolBalance(pools, c.assetPoolId, txs, to)),
+        current: Math.max(0, poolBalance(pools, c.assetPoolId, balances)),
         target: c.targetAmount,
         targetDate: c.targetDate,
         startDate: c.startDate
@@ -233,11 +251,14 @@ export function evaluatePlan(
   from?: string,
   to?: string
 ): EvaluatedGroup[] {
+  // Build the account-balance index once and share it across every group, instead
+  // of re-scanning the transaction list inside each section/goal evaluation.
+  const balances = accountBalanceIndex(txs, to);
   return [...groups]
     .sort((a, b) => a.order - b.order)
     .map((group) => ({
       group,
-      distribution: evaluateDistribution(group, sections, txs, pools, from, to),
-      targets: evaluateTargets(sectionsOfGroup(group, sections), txs, pools, to)
+      distribution: evaluateDistribution(group, sections, txs, pools, from, to, balances),
+      targets: evaluateTargets(sectionsOfGroup(group, sections), txs, pools, to, balances)
     }));
 }

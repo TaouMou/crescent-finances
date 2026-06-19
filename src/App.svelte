@@ -1,18 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Component } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import RightSidebar from '$lib/components/layout/RightSidebar.svelte';
-  import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
-  import ImportView from '$lib/components/import/ImportView.svelte';
-  import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
-  import RulesView from '$lib/components/rules/RulesView.svelte';
-  import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
-  import PlanView from '$lib/components/plan/PlanView.svelte';
-  import SettingsView from '$lib/components/settings/SettingsView.svelte';
-  import StartView from '$lib/components/start/StartView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
@@ -49,6 +41,49 @@
   function currentRoute(): string {
     return (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'dashboard';
   }
+
+  // ----- lazy-loaded route views -----
+  // Each view is its own dynamic import so Vite emits a separate chunk; only the
+  // active route's JS is fetched + parsed. Heavy views (Settings, Plan, Import,
+  // all charts) no longer sit on the first-paint path. The shell (Sidebar, Topbar,
+  // RightSidebar, LockScreen) stays eager since it renders on every route.
+  const viewLoaders: Record<string, () => Promise<{ default: Component }>> = {
+    start: () => import('$lib/components/start/StartView.svelte'),
+    import: () => import('$lib/components/import/ImportView.svelte'),
+    transactions: () => import('$lib/components/transactions/TransactionsView.svelte'),
+    rules: () => import('$lib/components/rules/RulesView.svelte'),
+    monthly: () => import('$lib/components/monthly/MonthlyView.svelte'),
+    plan: () => import('$lib/components/plan/PlanView.svelte'),
+    settings: () => import('$lib/components/settings/SettingsView.svelte'),
+    dashboard: () => import('$lib/components/dashboard/Dashboard.svelte')
+  };
+  const viewCache = new Map<string, Component>();
+  let View = $state<Component | null>(null);
+  let viewRoute = $state('dashboard');
+
+  // Resolve the active route to a component. Already-visited views swap in
+  // synchronously (cached); first visits keep the previous view mounted until the
+  // chunk resolves, so navigation never flashes a blank pane.
+  $effect(() => {
+    const target = viewLoaders[route] ? route : 'dashboard';
+    const cached = viewCache.get(target);
+    if (cached) {
+      View = cached;
+      viewRoute = target;
+      return;
+    }
+    let active = true;
+    viewLoaders[target]().then((m) => {
+      viewCache.set(target, m.default);
+      if (active) {
+        View = m.default;
+        viewRoute = target;
+      }
+    });
+    return () => {
+      active = false;
+    };
+  });
 
   const titles: Record<string, string> = {
     start: 'Getting started',
@@ -190,22 +225,14 @@
         class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
-        {#if route === 'start'}
-          <StartView />
-        {:else if route === 'import'}
-          <ImportView />
-        {:else if route === 'transactions'}
-          <TransactionsView />
-        {:else if route === 'rules'}
-          <RulesView />
-        {:else if route === 'monthly'}
-          <MonthlyView />
-        {:else if route === 'plan'}
-          <PlanView />
-        {:else if route === 'settings'}
-          <SettingsView />
+        {#if View && viewRoute === 'dashboard'}
+          <View bind:fromStr bind:toStr {spanLabel} />
+        {:else if View}
+          <View />
         {:else}
-          <Dashboard bind:fromStr bind:toStr {spanLabel} />
+          <div class="flex h-full items-center justify-center text-muted">
+            <span class="text-sm">Loading…</span>
+          </div>
         {/if}
       </main>
     </div>
