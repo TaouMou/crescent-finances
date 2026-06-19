@@ -109,7 +109,7 @@
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
-  <SummaryCards {fromStr} {toStr} />
+  <SummaryCards {fromStr} {toStr} {spanLabel} />
 
   {#if !hasData && !$txLoading}
     <Card class="ring-1 ring-accent/15">
