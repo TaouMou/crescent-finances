@@ -20,6 +20,7 @@
   import { config } from '$lib/stores/config';
   import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { cn } from '$lib/utils/cn';
+  import { Button } from '$lib/components/ui/button';
 
   let {
     active = 'dashboard',
@@ -64,13 +65,15 @@
       </div>
       <span class="truncate text-sm font-medium text-ink">Crescent</span>
     </div>
-    <button
-      class="press grid h-9 w-9 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+    <Button
+      variant="ghost"
+      size="icon"
+      class="text-muted hover:text-ink"
       onclick={() => onClose?.()}
       aria-label="Close sidebar"
     >
       <X class="h-5 w-5" />
-    </button>
+    </Button>
   </div>
 
   <nav class="flex-1 touch-pan-y space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-1">

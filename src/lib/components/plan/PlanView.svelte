@@ -2,6 +2,15 @@
   import { Plus, Trash, PencilSimple, Check, X, Target, CaretLeft, CaretRight } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import {
+    Select,
+    SelectTrigger,
+    SelectContent,
+    SelectItem,
+    SelectValue
+  } from '$lib/components/ui/select';
   import ColorField from '$lib/components/ui/ColorField.svelte';
   import DateField from '$lib/components/ui/DateField.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
@@ -376,30 +385,19 @@
     <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
       <!-- Month picker -->
       <div class="flex items-center justify-center gap-1 sm:justify-start">
-        <button
-          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          onclick={prevMonth}
-          title="Previous month"
-        >
+        <Button variant="ghost" size="icon" class="h-7 w-7" onclick={prevMonth} title="Previous month">
           <CaretLeft class="h-4 w-4" />
-        </button>
+        </Button>
         <span class="min-w-[8.5rem] text-center text-sm font-medium text-ink">
           {formatMonthLabel(selectedMonth, locale)}
         </span>
-        <button
-          class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          onclick={nextMonth}
-          title="Next month"
-        >
+        <Button variant="ghost" size="icon" class="h-7 w-7" onclick={nextMonth} title="Next month">
           <CaretRight class="h-4 w-4" />
-        </button>
+        </Button>
       </div>
-      <button
-        class="press flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80"
-        onclick={newGroup}
-      >
+      <Button class="shrink-0" onclick={newGroup}>
         <Plus class="h-4 w-4 shrink-0" /> New budget
-      </button>
+      </Button>
     </div>
   </div>
 
@@ -409,22 +407,19 @@
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
-          <input
-            type="text"
-            bind:value={editingGroup.name}
-            placeholder="e.g. Monthly plan"
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-          />
+          <Input type="text" bind:value={editingGroup.name} placeholder="e.g. Monthly plan" />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">What is this?</span>
-          <select
-            bind:value={editingGroup.kind}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-          >
-            <option value="distribution">Budget — split income into buckets</option>
-            <option value="plain">Goals — track savings targets</option>
-          </select>
+          <Select type="single" value={editingGroup.kind} onValueChange={(v) => editingGroup && (editingGroup.kind = v as 'distribution' | 'plain')}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="distribution" label="Budget — split income into buckets" />
+              <SelectItem value="plain" label="Goals — track savings targets" />
+            </SelectContent>
+          </Select>
           <span class="text-xs text-muted">
             {#if editingGroup.kind === 'distribution'}
               Splits your income across buckets and compares plan vs actual. Best for monthly budgeting.
@@ -435,16 +430,12 @@
         </label>
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
-        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (groupModalOpen = false)}>
+        <Button variant="ghost" onclick={() => (groupModalOpen = false)}>
           <X class="h-4 w-4" /> Cancel
-        </button>
-        <button
-          class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
-          onclick={saveGroup}
-          disabled={saving || !editingGroup.name.trim()}
-        >
+        </Button>
+        <Button onclick={saveGroup} disabled={saving || !editingGroup.name.trim()}>
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </div>
     {/if}
   </Modal>
@@ -455,12 +446,7 @@
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Name</span>
-          <input
-            type="text"
-            bind:value={editingSection.name}
-            placeholder="e.g. Savings"
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-          />
+          <Input type="text" bind:value={editingSection.name} placeholder="e.g. Savings" />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Color</span>
@@ -470,7 +456,7 @@
           <span class="text-xs text-muted">How is this calculated?</span>
           <select
             bind:value={editingSection.calcType}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+            class="h-9 w-full rounded-control border border-hairline bg-transparent px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <optgroup label="Allocate income">
               <option value="percentage">% of income</option>
@@ -500,17 +486,17 @@
         {#if editingSection.calcType === 'percentage'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Percent of income</span>
-            <input type="number" min="0" max="100" bind:value={editingSection.percent} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="0" max="100" bind:value={editingSection.percent} />
           </label>
         {:else if editingSection.calcType === 'fixed'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Amount ({currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.amountMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="0" step="0.01" bind:value={editingSection.amountMajor} />
           </label>
         {:else if editingSection.calcType === 'target'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target amount ({currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.targetMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="0" step="0.01" bind:value={editingSection.targetMajor} />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Target date (optional)</span>
@@ -522,12 +508,17 @@
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Track progress from (optional)</span>
-            <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
-              <option value="">Not linked — progress stays 0%</option>
-              {#each $config?.assetPools ?? [] as p (p.id)}
-                <option value={p.id}>{p.name}</option>
-              {/each}
-            </select>
+            <Select type="single" value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="" label="Not linked — progress stays 0%" />
+                {#each $config?.assetPools ?? [] as p (p.id)}
+                  <SelectItem value={p.id} label={p.name} />
+                {/each}
+              </SelectContent>
+            </Select>
             <span class="text-xs text-muted">
               Progress is read automatically from the linked pool's balance — there's no manual
               "I saved €X" entry. To track a goal, link a pool (set one up in Settings); otherwise
@@ -538,12 +529,17 @@
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Asset pool</span>
             {#if ($config?.assetPools ?? []).length > 0}
-              <select bind:value={editingSection.assetPoolId} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
-                <option value="">Select a pool…</option>
-                {#each $config?.assetPools ?? [] as p (p.id)}
-                  <option value={p.id}>{p.name}</option>
-                {/each}
-              </select>
+              <Select type="single" value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" label="Select a pool…" />
+                  {#each $config?.assetPools ?? [] as p (p.id)}
+                    <SelectItem value={p.id} label={p.name} />
+                  {/each}
+                </SelectContent>
+              </Select>
             {:else}
               <span class="text-xs text-muted">No asset pools yet — create accounts and a pool in Settings first.</span>
             {/if}
@@ -555,7 +551,7 @@
               <select
                 multiple
                 bind:value={editingSection.filterCategoryIds}
-                class="min-h-[5.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                class="min-h-[5.5rem] rounded-control border border-hairline bg-transparent px-2 py-1.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {#each $config?.categories ?? [] as c (c.id)}
                   <option value={c.id}>{c.name}</option>
@@ -567,7 +563,7 @@
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Planned (optional, {currency})</span>
-            <input type="number" min="0" step="0.01" bind:value={editingSection.plannedMajor} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="0" step="0.01" bind:value={editingSection.plannedMajor} />
           </label>
           <details class="sm:col-span-2">
             <summary class="cursor-pointer text-xs text-muted hover:text-ink">More filters</summary>
@@ -575,7 +571,7 @@
               {#if ($config?.accounts ?? []).length > 0}
                 <label class="flex flex-col gap-1">
                   <span class="text-xs text-muted">Accounts</span>
-                  <select multiple bind:value={editingSection.filterAccountIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                  <select multiple bind:value={editingSection.filterAccountIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-transparent px-2 py-1.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     {#each $config?.accounts ?? [] as a (a.id)}
                       <option value={a.id}>{a.name}</option>
                     {/each}
@@ -585,7 +581,7 @@
               {#if ($config?.tags ?? []).length > 0}
                 <label class="flex flex-col gap-1">
                   <span class="text-xs text-muted">Tags</span>
-                  <select multiple bind:value={editingSection.filterTagIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-paper px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50">
+                  <select multiple bind:value={editingSection.filterTagIds} class="min-h-[4.5rem] rounded-control border border-hairline bg-transparent px-2 py-1.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     {#each $config?.tags ?? [] as t (t.id)}
                       <option value={t.id}>{t.name}</option>
                     {/each}
@@ -594,7 +590,7 @@
               {/if}
               <label class="flex flex-col gap-1 sm:col-span-2">
                 <span class="text-xs text-muted">Label contains</span>
-                <input type="text" bind:value={editingSection.filterQuery} placeholder="e.g. groceries" class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+                <Input type="text" bind:value={editingSection.filterQuery} placeholder="e.g. groceries" />
               </label>
             </div>
           </details>
@@ -603,19 +599,21 @@
         <!-- Schedule (optional, applies to any section) -->
         <label class="flex flex-col gap-1 sm:col-span-2">
           <span class="text-xs text-muted">Schedule (optional)</span>
-          <select
-            bind:value={editingSection.scheduleKind}
-            class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-          >
-            <option value="none">None</option>
-            <option value="interval">Every N days</option>
-            <option value="anniversary">Yearly (month / day)</option>
-          </select>
+          <Select type="single" value={editingSection.scheduleKind} onValueChange={(v) => editingSection && (editingSection.scheduleKind = v as 'none' | 'interval' | 'anniversary')}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none" label="None" />
+              <SelectItem value="interval" label="Every N days" />
+              <SelectItem value="anniversary" label="Yearly (month / day)" />
+            </SelectContent>
+          </Select>
         </label>
         {#if editingSection.scheduleKind === 'interval'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Every (days)</span>
-            <input type="number" min="1" bind:value={editingSection.intervalEveryDays} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="1" bind:value={editingSection.intervalEveryDays} />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Starting from</span>
@@ -624,25 +622,24 @@
         {:else if editingSection.scheduleKind === 'anniversary'}
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Month (1–12)</span>
-            <input type="number" min="1" max="12" bind:value={editingSection.annivMonth} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="1" max="12" bind:value={editingSection.annivMonth} />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-xs text-muted">Day (1–31)</span>
-            <input type="number" min="1" max="31" bind:value={editingSection.annivDay} class="h-9 rounded-control border border-hairline bg-paper px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50" />
+            <Input type="number" min="1" max="31" bind:value={editingSection.annivDay} />
           </label>
         {/if}
       </div>
       <div class="mt-5 flex items-center justify-end gap-2">
-        <button class="press flex h-9 items-center gap-1.5 rounded-control px-3 text-sm text-muted hover:bg-ink/5 active:bg-ink/10" onclick={() => (sectionModalOpen = false)}>
+        <Button variant="ghost" onclick={() => (sectionModalOpen = false)}>
           <X class="h-4 w-4" /> Cancel
-        </button>
-        <button
-          class="press flex h-9 items-center gap-1.5 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+        </Button>
+        <Button
           onclick={saveSection}
           disabled={saving || !editingSection.name.trim() || (editingSection.calcType === 'target' && !(Number(editingSection.targetMajor) > 0)) || (editingSection.calcType === 'accountBalance' && !editingSection.assetPoolId)}
         >
           <Check class="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </div>
     {/if}
   </Modal>
@@ -666,9 +663,9 @@
         {/each}
       </div>
       <div class="text-center">
-        <button class="press text-sm font-medium text-accent hover:underline" onclick={newGroup}>
+        <Button variant="link" class="h-auto p-0 text-sm font-medium" onclick={newGroup}>
           or build from scratch
-        </button>
+        </Button>
       </div>
     </div>
   {/if}
@@ -682,15 +679,15 @@
           <span class="text-xs text-muted">{groupKindLabel(ev.group.kind)}</span>
         </div>
         <div class="flex shrink-0 items-center gap-1">
-          <button class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:px-2.5" onclick={() => newSection(ev.group.id)} title={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'} aria-label={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}>
+          <Button variant="outline" size="sm" class="gap-1.5 px-2 sm:px-2.5" onclick={() => newSection(ev.group.id)} title={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'} aria-label={ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}>
             <Plus class="h-3.5 w-3.5" /> <span class="hidden sm:inline">{ev.group.kind === 'plain' ? 'Add goal' : 'Add bucket'}</span>
-          </button>
-          <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => editGroup(ev.group)} title="Edit group">
+          </Button>
+          <Button variant="ghost" size="icon" class="h-8 w-8 text-muted hover:text-ink" onclick={() => editGroup(ev.group)} title="Edit group">
             <PencilSimple class="h-4 w-4" />
-          </button>
-          <button class="press grid h-8 w-8 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => deleteGroup(ev.group.id)} title="Delete group">
+          </Button>
+          <Button variant="ghost" size="icon" class="h-8 w-8 text-muted hover:bg-red-500/10 hover:text-red-500" onclick={() => deleteGroup(ev.group.id)} title="Delete group">
             <Trash class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
