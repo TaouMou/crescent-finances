@@ -132,39 +132,3 @@ export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
     return { bucket, income, spending: Math.abs(spending), net, cumulative };
   });
 }
-
-/**
- * Daily cumulative net series for the line chart.
- * Returns one point per day in [from, to], carrying the running balance from
- * all transactions (including those before `from`).
- * Returns [] when there are no transactions in the selected range.
- */
-export function dailyCumulative(
-  txs: Transaction[],
-  from: string,
-  to: string
-): { t: number; value: number }[] {
-  if (txs.length === 0) return [];
-
-  const byDate = new Map<string, number>();
-  for (const tx of txs) {
-    byDate.set(tx.date, (byDate.get(tx.date) ?? 0) + tx.amount);
-  }
-
-  const hasInRange = [...byDate.keys()].some((d) => d >= from && d <= to);
-  if (!hasInRange) return [];
-
-  let cumulative = 0;
-  for (const [date, net] of byDate) {
-    if (date < from) cumulative += net;
-  }
-
-  const points: { t: number; value: number }[] = [];
-  const end = new Date(`${to}T00:00:00Z`);
-  for (let d = new Date(`${from}T00:00:00Z`); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().slice(0, 10);
-    cumulative += byDate.get(dateStr) ?? 0;
-    points.push({ t: Math.floor(d.getTime() / 1000), value: cumulative });
-  }
-  return points;
-}
