@@ -81,9 +81,13 @@
     return breakdown.map((b) => ({ name: b.name, color: b.color, amount: b.amount }));
   });
 
-  // Real plan from config when the user has configured sections.
+  // Real plan from config when the user has configured sections. Skipped entirely
+  // in demo mode — the seed below supplies the figures, so there's no point running
+  // the engine over the (empty) real transaction list.
   const realPlan = $derived(
-    evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
+    showDemo
+      ? []
+      : evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
   );
   const realDist = $derived(realPlan.find((g) => g.distribution.sections.length > 0)?.distribution);
   const realTargets = $derived(realPlan.flatMap((g) => g.targets));
@@ -100,7 +104,7 @@
   const anomalySettings = $derived(
     $config?.settings?.anomaly ?? { baselineMonths: 6, thresholdPct: 40, minAbsolute: 5000, madK: 3 }
   );
-  const realAnomalies = $derived(detectAnomalies($txAll, categories, anomalySettings));
+  const realAnomalies = $derived(showDemo ? [] : detectAnomalies($txAll, categories, anomalySettings));
   const anomalyData = $derived(showDemo ? anomalies : realAnomalies);
 </script>
 

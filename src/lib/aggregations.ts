@@ -33,7 +33,21 @@ function inPeriod(tx: Transaction, from?: string, to?: string): boolean {
   return true;
 }
 
+/**
+ * The decrypted transaction array is replaced wholesale whenever the data
+ * changes (see stores/transactions.ts), so its identity is a sound cache key:
+ * same reference + same params ⇒ same result. Each aggregation keeps a one-entry
+ * memo, which collapses the repeat calls a single reactive flush makes — e.g.
+ * `summarize(txs, from, to)` runs once per group inside `evaluatePlan`. Callers
+ * never mutate the returned value in place, so handing back the cached object is
+ * safe.
+ */
+let _summarizeMemo: { txs: Transaction[]; from?: string; to?: string; out: PeriodSummary } | null =
+  null;
+
 export function summarize(txs: Transaction[], from?: string, to?: string): PeriodSummary {
+  if (_summarizeMemo && _summarizeMemo.txs === txs && _summarizeMemo.from === from && _summarizeMemo.to === to)
+    return _summarizeMemo.out;
   let income = 0;
   let spending = 0;
   for (const tx of txs) {
@@ -41,8 +55,14 @@ export function summarize(txs: Transaction[], from?: string, to?: string): Perio
     if (tx.amount > 0) income += tx.amount;
     else spending += tx.amount;
   }
-  return { income, spending: Math.abs(spending), net: income + spending };
+  const out = { income, spending: Math.abs(spending), net: income + spending };
+  _summarizeMemo = { txs, from, to, out };
+  return out;
 }
+
+let _breakdownMemo:
+  | { txs: Transaction[]; categories: Category[]; from?: string; to?: string; out: CategoryBreakdown[] }
+  | null = null;
 
 export function categoryBreakdown(
   txs: Transaction[],
@@ -50,6 +70,14 @@ export function categoryBreakdown(
   from?: string,
   to?: string
 ): CategoryBreakdown[] {
+  if (
+    _breakdownMemo &&
+    _breakdownMemo.txs === txs &&
+    _breakdownMemo.categories === categories &&
+    _breakdownMemo.from === from &&
+    _breakdownMemo.to === to
+  )
+    return _breakdownMemo.out;
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const totals = new Map<string | null, number>();
 
@@ -60,7 +88,7 @@ export function categoryBreakdown(
     totals.set(key, (totals.get(key) ?? 0) + Math.abs(tx.amount));
   }
 
-  return [...totals.entries()]
+  const out = [...totals.entries()]
     .sort(([, a], [, b]) => b - a)
     .map(([id, amount]) => {
       const cat = id ? catMap.get(id) : undefined;
@@ -71,6 +99,8 @@ export function categoryBreakdown(
         amount
       };
     });
+  _breakdownMemo = { txs, categories, from, to, out };
+  return out;
 }
 
 /**
@@ -99,7 +129,10 @@ export function accountsBalance(txs: Transaction[], accountIds: string[]): numbe
  * with zero configuration this is simply the all-time net of everything
  * imported. The `''` key anchors account-less transactions (`accountId === null`).
  */
+let _liquidMemo: { txs: Transaction[]; starting: StartingBalances; out: number } | null = null;
+
 export function liquidBalance(txs: Transaction[], starting: StartingBalances = {}): number {
+  if (_liquidMemo && _liquidMemo.txs === txs && _liquidMemo.starting === starting) return _liquidMemo.out;
   let total = 0;
   for (const sb of Object.values(starting)) total += sb.amount;
   for (const tx of txs) {
@@ -110,10 +143,14 @@ export function liquidBalance(txs: Transaction[], starting: StartingBalances = {
       total += tx.amount;
     }
   }
+  _liquidMemo = { txs, starting, out: total };
   return total;
 }
 
+let _monthlyMemo: { txs: Transaction[]; out: MonthlyNet[] } | null = null;
+
 export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
+  if (_monthlyMemo && _monthlyMemo.txs === txs) return _monthlyMemo.out;
   const byBucket = new Map<string, { income: number; spending: number }>();
 
   for (const tx of txs) {
@@ -126,9 +163,11 @@ export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
 
   const sorted = [...byBucket.entries()].sort(([a], [b]) => a.localeCompare(b));
   let cumulative = 0;
-  return sorted.map(([bucket, { income, spending }]) => {
+  const out = sorted.map(([bucket, { income, spending }]) => {
     const net = income + spending;
     cumulative += net;
     return { bucket, income, spending: Math.abs(spending), net, cumulative };
   });
+  _monthlyMemo = { txs, out };
+  return out;
 }
