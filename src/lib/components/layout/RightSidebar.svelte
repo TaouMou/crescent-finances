@@ -73,43 +73,64 @@
   </div>
 
   <!-- Content -->
-  <div class="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+  <div class="flex-1 overflow-y-auto overscroll-contain px-4 py-2">
     {#if route === 'dashboard'}
-      <!-- Quick presets -->
-      <p class="mb-2 text-xs font-medium uppercase tracking-wider text-muted/60">Quick range</p>
-      <div class="space-y-1">
-        {#each presets as p (p.label)}
-          <button
-            class="press flex h-8 w-full items-center rounded-control px-2.5 text-left text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            onclick={p.action}
-          >
-            {p.label}
-          </button>
-        {/each}
-      </div>
+      <div class="divide-y divide-hairline">
+        <!-- Quick presets -->
+        <section class="py-4 first:pt-2">
+          <h3 class="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            <span class="h-3 w-0.5 rounded-full bg-accent/60"></span>Quick range
+          </h3>
+          <div class="space-y-1">
+            {#each presets as p (p.label)}
+              <button
+                class="press flex h-8 w-full items-center rounded-control px-2.5 text-left text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+                onclick={p.action}
+              >
+                {p.label}
+              </button>
+            {/each}
+          </div>
+        </section>
 
-      <!-- Custom date range -->
-      <div class="mt-5">
-        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-muted/60">Custom range</p>
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-          <DateField bind:value={fromStr} max={toStr} label="Start date" />
-          <span class="text-muted">–</span>
-          <DateField bind:value={toStr} min={fromStr} label="End date" />
-        </div>
-        {#if spanLabel}
-          <p class="mt-2 text-xs text-muted">{spanLabel}</p>
+        <!-- Custom date range -->
+        <section class="py-4">
+          <h3 class="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            <span class="h-3 w-0.5 rounded-full bg-accent/60"></span>Custom range
+          </h3>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-muted">From</span>
+              <DateField bind:value={fromStr} max={toStr} label="Start date" />
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-muted">To</span>
+              <DateField bind:value={toStr} min={fromStr} label="End date" />
+            </div>
+          </div>
+          {#if spanLabel}
+            <p class="mt-3 text-xs text-muted">{spanLabel}</p>
+          {/if}
+        </section>
+
+        {#if help}
+          <section class="py-4 last:pb-2">
+            <h3 class="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+              <span class="h-3 w-0.5 rounded-full bg-accent/60"></span>About this page
+            </h3>
+            <HelpPanel {help} />
+          </section>
         {/if}
       </div>
-
-      {#if help}
-        <div class="mt-6 border-t border-hairline pt-4">
-          <HelpPanel {help} />
-        </div>
-      {/if}
     {:else if help}
-      <HelpPanel {help} />
+      <section class="py-2">
+        <h3 class="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+          <span class="h-3 w-0.5 rounded-full bg-accent/60"></span>{help.title}
+        </h3>
+        <HelpPanel {help} />
+      </section>
     {:else}
-      <p class="text-sm text-muted">No details available for this page.</p>
+      <p class="py-2 text-sm text-muted">No details available for this page.</p>
     {/if}
   </div>
 </div>

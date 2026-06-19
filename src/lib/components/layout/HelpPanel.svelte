@@ -5,11 +5,11 @@
   let { help }: { help: PageHelp } = $props();
 </script>
 
-<div class="space-y-4">
-  <p class="text-sm text-muted">{help.intro}</p>
+<div class="divide-y divide-hairline">
+  <p class="pb-3 text-sm text-muted">{help.intro}</p>
 
   {#if help.sections?.length}
-    <div class="space-y-3">
+    <div class="space-y-3 py-3">
       {#each help.sections as s (s.heading)}
         <div>
           <h3 class="text-xs font-semibold uppercase tracking-wider text-ink/80">{s.heading}</h3>
@@ -20,14 +20,16 @@
   {/if}
 
   {#if help.example}
-    <div class="flex gap-2 rounded-control border border-accent/20 bg-accent/5 p-3">
-      <Lightbulb class="h-4 w-4 shrink-0 text-accent" />
-      <p class="text-sm text-ink/90">{help.example}</p>
+    <div class="py-3">
+      <div class="flex gap-2 rounded-control border border-accent/20 bg-accent/5 p-3">
+        <Lightbulb class="h-4 w-4 shrink-0 text-accent" />
+        <p class="text-sm text-ink/90">{help.example}</p>
+      </div>
     </div>
   {/if}
 
   {#if help.terms?.length}
-    <div>
+    <div class="pt-3">
       <h3 class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink/80">Key terms</h3>
       <dl class="space-y-2">
         {#each help.terms as t (t.term)}
