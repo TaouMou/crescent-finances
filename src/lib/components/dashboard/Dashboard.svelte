@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, Info, ArrowUpRight, Compass } from 'phosphor-svelte';
+  import { ArrowUpRight, Compass } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import SummaryCards from './SummaryCards.svelte';
   import AnomaliesList from './AnomaliesList.svelte';
@@ -18,7 +18,7 @@
     demoCurrency,
     demoLocale
   } from '$lib/seed/dashboard';
-  import { toISODate } from '$lib/utils/dates';
+  import { toISODate, currentMonth, monthBounds, formatMonthLabel } from '$lib/utils/dates';
   import { transactions } from '$lib/stores/transactions';
   import { balances } from '$lib/stores/balances';
   import { config } from '$lib/stores/config';
@@ -82,13 +82,28 @@
     return breakdown.map((b) => ({ name: b.name, color: b.color, amount: b.amount }));
   });
 
+  // The "Monthly plan" card is a monthly budget, so its income must be scoped to a
+  // single calendar month — the dashboard's date-range control drives the charts,
+  // not the plan. Without this scope the engine summed all-time income, inflating
+  // the figure (and skewing the percentage buckets) versus the Plan page.
+  const planMonth = currentMonth();
+  const planBounds = monthBounds(planMonth);
+  const planPeriodLabel = $derived(formatMonthLabel(planMonth, locale));
+
   // Real plan from config when the user has configured sections. Skipped entirely
   // in demo mode — the seed below supplies the figures, so there's no point running
   // the engine over the (empty) real transaction list.
   const realPlan = $derived(
     showDemo
       ? []
-      : evaluatePlan($config?.sectionGroups ?? [], $config?.sections ?? [], $txAll, $config?.assetPools ?? [])
+      : evaluatePlan(
+          $config?.sectionGroups ?? [],
+          $config?.sections ?? [],
+          $txAll,
+          $config?.assetPools ?? [],
+          planBounds.from,
+          planBounds.to
+        )
   );
   const realDist = $derived(realPlan.find((g) => g.distribution.sections.length > 0)?.distribution);
   const realTargets = $derived(realPlan.flatMap((g) => g.targets));
@@ -96,10 +111,6 @@
   // Real config wins when present; demo seed only fills in while showDemo.
   const distribution = $derived(realDist ?? (showDemo ? demoDistribution : undefined));
   const targets = $derived(realTargets.length > 0 ? realTargets : showDemo ? demoTargets : []);
-
-  // Distribution status badge
-  const planPctSum = $derived(distribution?.sections.reduce((s, x) => s + (x.plannedPct ?? 0), 0) ?? 0);
-  const planBalanced = $derived(Math.round(planPctSum) === 100);
 
   // Real anomalies from saved thresholds; demo seed only while showDemo.
   const anomalySettings = $derived(
@@ -208,27 +219,12 @@
     <!-- Side column -->
     <div class="space-y-5">
       <Card class="ring-accent/20">
-        <div class="mb-4 flex items-center justify-between gap-2">
+        <div class="mb-4 flex items-baseline justify-between gap-2">
           <h2 class="card-title">{distribution?.name ?? 'Monthly plan'}</h2>
-          {#if distribution}
-            <span
-              title="Counts the share of income assigned across your percentage buckets. A 'remainder' bucket fills whatever is left, so the plan reaches 100%."
-              class={`inline-flex shrink-0 cursor-help items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 py-1 text-xs font-medium ${
-                planBalanced
-                  ? 'border-income/30 bg-income/10 text-income'
-                  : 'border-warn/30 bg-warn/10 text-warn'
-              }`}
-            >
-              {#if planBalanced}
-                <Check class="h-3.5 w-3.5 shrink-0" /> Balanced · 100%
-              {:else}
-                <Info class="h-3.5 w-3.5 shrink-0" /> {Math.round(planPctSum)}% allocated
-              {/if}
-            </span>
-          {/if}
+          <a href="#plan" class="shrink-0 text-xs font-medium text-accent hover:underline">Edit plan</a>
         </div>
         {#if distribution}
-          <DistributionView group={distribution} {currency} {locale} />
+          <DistributionView group={distribution} {currency} {locale} periodLabel={showDemo ? undefined : planPeriodLabel} />
         {:else}
           <div class="flex flex-col items-center gap-1.5 py-8 text-center">
             <p class="text-sm text-muted">No plan configured.</p>
