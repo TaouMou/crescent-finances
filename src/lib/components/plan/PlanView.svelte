@@ -700,7 +700,7 @@
       </div>
 
       {#if ev.distribution.sections.length > 0}
-        <DistributionView group={ev.distribution} {currency} {locale} {filterDescriptions} onEdit={editSectionById} onDelete={deleteSection} />
+        <DistributionView group={ev.distribution} {currency} {locale} {filterDescriptions} periodLabel={formatMonthLabel(selectedMonth, locale)} onEdit={editSectionById} onDelete={deleteSection} />
       {/if}
 
       {#if ev.targets.length > 0}

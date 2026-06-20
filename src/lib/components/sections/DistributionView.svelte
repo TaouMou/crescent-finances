@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Funnel, PencilSimple, Trash, Info } from 'phosphor-svelte';
+  import { Funnel, PencilSimple, Trash, Info, CheckCircle, Warning } from 'phosphor-svelte';
   import { formatMoney, formatPercent } from '$lib/utils/currency';
   import type { DistributionGroup, DistributionSection } from '$lib/seed/dashboard';
 
@@ -8,6 +8,7 @@
     currency = 'EUR',
     locale = 'en-US',
     filterDescriptions = {},
+    periodLabel,
     onEdit,
     onDelete
   }: {
@@ -16,6 +17,8 @@
     locale?: string;
     /** Optional map of section id → human-readable filter label for filterSum sections. */
     filterDescriptions?: Record<string, string>;
+    /** Concrete period name (e.g. "June 2026") shown beside the income; falls back to "this period". */
+    periodLabel?: string;
     /** When provided, each row shows an edit button wired to the section id. */
     onEdit?: (id: string) => void;
     /** When provided, each row shows a delete button wired to the section id. */
@@ -25,6 +28,18 @@
   const fmt = (n: number) => formatMoney(n, { currency, locale });
 
   const plannedTotal = $derived(group.sections.reduce((s, x) => s + x.planned, 0));
+
+  // Beginner-friendly allocation status: is every euro of income assigned to a
+  // bucket? Derived from real planned amounts — so a `remainder` bucket correctly
+  // reads as fully assigned — rather than the percentage sum. Sub-€0.50 rounding
+  // noise is ignored so the plan doesn't nag about a stray cent.
+  const allocation = $derived.by(() => {
+    if (group.total <= 0) return null;
+    const leftover = group.total - plannedTotal;
+    if (leftover > 50) return { tone: 'text-warn', icon: Info, text: `${fmt(leftover)} left to assign` };
+    if (leftover < -50) return { tone: 'text-expense', icon: Warning, text: `Over budget by ${fmt(-leftover)}` };
+    return { tone: 'text-income', icon: CheckCircle, text: 'All income assigned' };
+  });
 
   // One shared scale across the rows so every bullet is comparable at a glance.
   const scale = $derived(Math.max(1, ...group.sections.map((s) => Math.max(s.planned, s.actual))));
@@ -49,15 +64,22 @@
 <div class="space-y-5">
   <div class="space-y-1">
     <p class="flex items-center gap-1 text-sm text-muted">
-      {group.source} this period
+      {group.source}{periodLabel ? ` · ${periodLabel}` : ' this period'}
       <span
         class="inline-flex cursor-help text-muted/70"
-        title="Your imported income for the selected period — the amount divided across the buckets below."
+        title={`Your imported income for ${periodLabel ?? 'the selected period'} — the amount divided across the buckets below.`}
       >
         <Info class="h-3.5 w-3.5 shrink-0" />
       </span>
     </p>
     <p class="tnum text-xl font-medium text-ink">{fmt(group.total)}</p>
+    {#if allocation}
+      {@const Icon = allocation.icon}
+      <p class={`flex items-center gap-1 text-xs ${allocation.tone}`}>
+        <Icon class="h-3.5 w-3.5 shrink-0" weight="fill" />
+        {allocation.text}
+      </p>
+    {/if}
   </div>
 
   <!-- Planned allocation: how the source splits across sections (the plan). -->
