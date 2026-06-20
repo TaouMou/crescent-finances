@@ -28,7 +28,7 @@
   >
     <List class="h-5 w-5" />
   </Button>
-  <h1 class="relative z-10 min-w-0 truncate text-base font-medium text-ink">{title}</h1>
+  <h1 class="relative z-10 min-w-0 truncate text-base font-semibold tracking-tight text-ink">{title}</h1>
 
   <div class="relative z-10 ml-auto">
     <Button
