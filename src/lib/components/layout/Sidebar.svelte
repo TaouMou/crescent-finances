@@ -59,11 +59,11 @@
 
 <aside class="flex h-full w-[280px] flex-col border-r border-hairline bg-paper">
   <div class="flex h-14 touch-none items-center justify-between gap-2.5 px-4">
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-2">
       <div class="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
-        <span class="text-sm font-medium">◐</span>
+        <Moon class="h-[15px] w-[15px]" weight="fill" />
       </div>
-      <span class="truncate text-sm font-medium text-ink">Crescent</span>
+      <span class="truncate bg-gradient-to-r from-accent to-accent/60 bg-clip-text text-base font-bold tracking-tight text-transparent">Crescent</span>
     </div>
     <Button
       variant="ghost"
