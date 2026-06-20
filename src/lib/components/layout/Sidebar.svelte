@@ -6,7 +6,7 @@
     ChartPieSlice,
     UploadSimple,
     GearSix,
-    CaretRight,
+    Plus,
     Compass,
     Moon,
     Sun,
@@ -14,11 +14,9 @@
     X,
     Funnel
   } from 'phosphor-svelte';
-  import { slide } from 'svelte/transition';
   import { theme } from '$lib/stores/theme';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
-  import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { cn } from '$lib/utils/cn';
   import { Button } from '$lib/components/ui/button';
 
@@ -40,18 +38,11 @@
     { id: 'rules', label: 'Rules', icon: Funnel }
   ];
 
-  let planOpen = $state(true);
   const planGroups = $derived(
     [...($config?.sectionGroups ?? [])]
       .sort((a, b) => a.order - b.order)
       .map((g) => ({ key: g.id, label: g.name, href: '#plan' }))
   );
-
-  function requestNewGroup() {
-    openNewGroupRequested.set(true);
-    location.hash = '#plan';
-    onClose?.();
-  }
 
   const footerNav = [
     { id: 'import', label: 'Import CSV', icon: UploadSimple },
@@ -96,36 +87,41 @@
       </a>
     {/each}
 
-    <!-- Planning section -->
-    <p class="px-2.5 pb-0.5 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted/50">Planning</p>
-    <button
-      class="flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-      onclick={() => (planOpen = !planOpen)}
-      title="Plan"
-    >
-      <ChartPieSlice class="h-[18px] w-[18px] shrink-0" />
-      <span class="truncate">Plan</span>
-      <CaretRight class={cn('ml-auto h-4 w-4 transition-transform', planOpen && 'rotate-90')} />
-    </button>
-    {#if planOpen}
-      <div class="space-y-0.5 pb-1" transition:slide={{ duration: 180 }}>
-        {#each planGroups as g (g.key)}
-          <a
-            href={g.href}
-            class="flex h-8 items-center rounded-control pl-9 pr-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            onclick={() => onClose?.()}
-          >
-            <span class="truncate">{g.label}</span>
-          </a>
-        {/each}
-        <button
-          class="flex h-8 w-full items-center rounded-control pl-9 pr-2.5 text-sm text-muted/70 transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          onclick={requestNewGroup}
-        >
-          <span class="truncate">+ New budget</span>
-        </button>
-      </div>
-    {/if}
+    <!-- Planning section: the label is the heading; budgets are the entries,
+         and the trailing + opens the Plan page to add one (no surprise modal). -->
+    <div class="flex items-center justify-between gap-1 px-2.5 pb-1 pt-3">
+      <span
+        class={cn(
+          'text-[10px] font-semibold uppercase tracking-widest transition-colors',
+          active === 'plan' ? 'text-accent' : 'text-muted/50'
+        )}
+      >
+        Planning
+      </span>
+      <a
+        href="#plan"
+        class="press grid h-5 w-5 place-items-center rounded text-muted/60 transition-colors hover:bg-ink/5 hover:text-ink"
+        title="New budget"
+        aria-label="New budget"
+        onclick={() => onClose?.()}
+      >
+        <Plus class="h-3.5 w-3.5" />
+      </a>
+    </div>
+    {#each planGroups as g (g.key)}
+      <a
+        href={g.href}
+        class={cn(
+          'flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+          active === 'plan' ? 'text-ink' : 'text-muted'
+        )}
+        title={g.label}
+        onclick={() => onClose?.()}
+      >
+        <ChartPieSlice class="h-[18px] w-[18px] shrink-0 opacity-70" />
+        <span class="truncate">{g.label}</span>
+      </a>
+    {/each}
   </nav>
 
   <!-- Footer actions -->

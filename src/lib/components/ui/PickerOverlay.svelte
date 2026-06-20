@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { scale, fly, fade } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
   import { X } from 'phosphor-svelte';
   import { portal } from '$lib/actions/portal';
 
@@ -55,13 +56,12 @@
   }}
 />
 
-{#if open}
-  {#if isMobile}
+{#if open && isMobile}
     <!-- Full-screen mobile sheet, portaled to <body> so it escapes any
          transformed/clipping ancestor. -->
     <div class="fixed inset-0 z-[60] flex flex-col justify-end" use:portal>
       <button
-        class="absolute inset-0 cursor-default bg-ink/40 backdrop-blur-[2px]"
+        class="absolute inset-0 cursor-default bg-black/40 backdrop-blur-[2px]"
         aria-label="Close {label.toLowerCase()}"
         onclick={() => (open = false)}
         transition:fade={{ duration: reduce ? 0 : 150 }}
@@ -97,7 +97,7 @@
         </div>
       </div>
     </div>
-  {:else}
+{:else if open}
     <!-- Desktop anchored popover (parent must be `relative`). -->
     <button
       class="fixed inset-0 z-40 cursor-default"
@@ -114,9 +114,8 @@
       style="box-shadow: var(--shadow-card)"
       role="dialog"
       aria-label={label}
-      transition:scale={{ duration: reduce ? 0 : 150, start: 0.96, opacity: 0 }}
+      transition:scale={{ duration: reduce ? 0 : 190, start: 0.9, opacity: 0, easing: backOut }}
     >
       {@render children()}
     </div>
-  {/if}
 {/if}

@@ -95,4 +95,22 @@
     animation-duration: var(--dur-base);
     animation-timing-function: var(--ease-out);
   }
+
+  /* Theme switch: briefly cross-fade the themeable properties so light↔dark
+     glides instead of snapping. The class is only on <html> for the length of
+     the toggle (added/removed in stores/theme.ts), so it never slows down the
+     hover/active transitions during normal use. */
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color 320ms ease,
+      border-color 320ms ease,
+      color 320ms ease,
+      fill 320ms ease,
+      stroke 320ms ease,
+      box-shadow 320ms ease !important;
+    transition-delay: 0ms !important;
+  }
 }

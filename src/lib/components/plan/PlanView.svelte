@@ -17,7 +17,6 @@
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
-  import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { evaluatePlan } from '$lib/sections/engine';
   import { planTemplates, type PlanTemplate } from '$lib/sections/templates';
   import { safeParseConfig } from '$lib/config/schema';
@@ -326,6 +325,27 @@
     return kind === 'distribution' ? 'Budget' : 'Goals';
   }
 
+  // Option lists handed to each Select's `items` so the trigger shows the
+  // friendly label right away; otherwise bits-ui shows the raw value (e.g.
+  // "distribution", "none") until the dropdown has been opened once.
+  const groupKindItems = [
+    { value: 'distribution', label: 'Budget — split income into buckets' },
+    { value: 'plain', label: 'Goals — track savings targets' }
+  ];
+  const scheduleItems = [
+    { value: 'none', label: 'None' },
+    { value: 'interval', label: 'Every N days' },
+    { value: 'anniversary', label: 'Yearly (month / day)' }
+  ];
+  const poolItemsLinked = $derived([
+    { value: '', label: 'Not linked — progress stays 0%' },
+    ...($config?.assetPools ?? []).map((p) => ({ value: p.id, label: p.name }))
+  ]);
+  const poolItemsChoose = $derived([
+    { value: '', label: 'Select a pool…' },
+    ...($config?.assetPools ?? []).map((p) => ({ value: p.id, label: p.name }))
+  ]);
+
   /** One-line explanation + example shown under the section Type select. */
   function calcTypeHint(t: CalcType): string {
     switch (t) {
@@ -359,17 +379,6 @@
     }
   }
 
-  // Consume the sidebar's "+ New budget" request reactively rather than only on
-  // mount: the flag can be set while PlanView is already mounted (clicking the
-  // sidebar button while on #plan doesn't trigger a hashchange/remount), so an
-  // onMount-only read would leave it stuck true and spawn the modal on the next
-  // navigation to Plan.
-  $effect(() => {
-    if ($openNewGroupRequested) {
-      openNewGroupRequested.set(false);
-      newGroup();
-    }
-  });
 </script>
 
 <div class="mx-auto max-w-[860px] space-y-6 p-6">
@@ -411,13 +420,14 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">What is this?</span>
-          <Select type="single" value={editingGroup.kind} onValueChange={(v) => editingGroup && (editingGroup.kind = v as 'distribution' | 'plain')}>
+          <Select type="single" items={groupKindItems} value={editingGroup.kind} onValueChange={(v) => editingGroup && (editingGroup.kind = v as 'distribution' | 'plain')}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="distribution" label="Budget — split income into buckets" />
-              <SelectItem value="plain" label="Goals — track savings targets" />
+              {#each groupKindItems as it (it.value)}
+                <SelectItem value={it.value} label={it.label} />
+              {/each}
             </SelectContent>
           </Select>
           <span class="text-xs text-muted">
@@ -450,7 +460,7 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">Color</span>
-          <ColorField bind:value={editingSection.color} label="Section color" block />
+          <ColorField bind:value={editingSection.color} label="Bucket or goal color" block />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-xs text-muted">How is this calculated?</span>
@@ -508,14 +518,13 @@
           </label>
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Track progress from (optional)</span>
-            <Select type="single" value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
+            <Select type="single" items={poolItemsLinked} value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Not linked — progress stays 0%" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="" label="Not linked — progress stays 0%" />
-                {#each $config?.assetPools ?? [] as p (p.id)}
-                  <SelectItem value={p.id} label={p.name} />
+                {#each poolItemsLinked as it (it.value)}
+                  <SelectItem value={it.value} label={it.label} />
                 {/each}
               </SelectContent>
             </Select>
@@ -529,14 +538,13 @@
           <label class="flex flex-col gap-1 sm:col-span-2">
             <span class="text-xs text-muted">Asset pool</span>
             {#if ($config?.assetPools ?? []).length > 0}
-              <Select type="single" value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
+              <Select type="single" items={poolItemsChoose} value={editingSection.assetPoolId} onValueChange={(v) => editingSection && (editingSection.assetPoolId = v)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a pool…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" label="Select a pool…" />
-                  {#each $config?.assetPools ?? [] as p (p.id)}
-                    <SelectItem value={p.id} label={p.name} />
+                  {#each poolItemsChoose as it (it.value)}
+                    <SelectItem value={it.value} label={it.label} />
                   {/each}
                 </SelectContent>
               </Select>
@@ -599,14 +607,14 @@
         <!-- Schedule (optional, applies to any section) -->
         <label class="flex flex-col gap-1 sm:col-span-2">
           <span class="text-xs text-muted">Schedule (optional)</span>
-          <Select type="single" value={editingSection.scheduleKind} onValueChange={(v) => editingSection && (editingSection.scheduleKind = v as 'none' | 'interval' | 'anniversary')}>
+          <Select type="single" items={scheduleItems} value={editingSection.scheduleKind} onValueChange={(v) => editingSection && (editingSection.scheduleKind = v as 'none' | 'interval' | 'anniversary')}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none" label="None" />
-              <SelectItem value="interval" label="Every N days" />
-              <SelectItem value="anniversary" label="Yearly (month / day)" />
+              {#each scheduleItems as it (it.value)}
+                <SelectItem value={it.value} label={it.label} />
+              {/each}
             </SelectContent>
           </Select>
         </label>

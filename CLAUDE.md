@@ -48,7 +48,6 @@ Transactions are stored encrypted: only `id`, `fingerprint`, `dateBucket` are pl
 | `vault-machine.ts` | Pure `(state, event) → state` — unit-tested |
 | `transactions.ts` | Import-commit pipeline + decrypted transaction cache (`loadAll`, `applyAndSave`) |
 | `config.ts` | Config load/save |
-| `plan-ui.ts` | Cross-component flag so the sidebar "+ New group" opens PlanView's editor |
 | `theme.ts` | Light/dark toggle |
 
 ### `src/lib/config/`

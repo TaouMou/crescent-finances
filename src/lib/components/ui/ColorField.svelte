@@ -37,6 +37,9 @@
   let trigger = $state<HTMLButtonElement>();
   let align = $state<'left' | 'right'>('left');
 
+  const reduce =
+    typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   // Working HSV state. Kept independent of `value` so hue survives moves into
   // achromatic regions (grey/black), where hex→hsv would lose it.
   let hsv = $state<HSV>(hexToHsv(value || '#0da882'));
@@ -243,15 +246,15 @@
 
     <!-- Presets -->
     <div class="mt-3 grid grid-cols-9 gap-1.5">
-      {#each PRESETS as c (c)}
+      {#each PRESETS as c, i (c)}
         {@const sel = normalizeHex(value) === c}
         <button
           type="button"
           onclick={() => pickPreset(c)}
           aria-label="Use {c}"
           aria-pressed={sel}
-          class="press grid aspect-square w-full place-items-center rounded-[5px] ring-1 ring-inset ring-ink/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-          style="background-color: {c}"
+          class="swatch-in press grid aspect-square w-full place-items-center rounded-[5px] ring-1 ring-inset ring-ink/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          style="background-color: {c}; animation-delay: {reduce ? 0 : 30 + i * 11}ms"
         >
           {#if sel}
             <Check class="h-3.5 w-3.5" weight="bold" style="color: {contrastInk(c)}" />
@@ -261,3 +264,25 @@
     </div>
   </PickerOverlay>
 </div>
+
+<style>
+  /* Preset swatches pop in with a staggered delay (set inline per index) when
+     the picker opens. CSS animation rather than a Svelte transition because the
+     swatches live inside the popover's rendered snippet, where intro
+     transitions don't fire. */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes swatch-pop {
+      from {
+        opacity: 0;
+        transform: scale(0.4);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    .swatch-in {
+      animation: swatch-pop 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+  }
+</style>

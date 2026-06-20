@@ -60,6 +60,16 @@
   const viewCache = new Map<string, Component>();
   let View = $state<Component | null>(null);
   let viewRoute = $state('dashboard');
+  let loadError = $state(false);
+
+  // Guards a one-time hard reload per route after a failed chunk load. A rejected
+  // dynamic import almost always means a stale cached index.html points at a
+  // hashed chunk that no longer exists on the server (a new deploy rotated the
+  // hashes). Routes already in memory keep working; the not-yet-visited ones 404.
+  // We can't recover that in-page, so we reload once to pull the fresh index +
+  // correct chunk URLs, keyed per route so a working route's success can't reset
+  // a different route's guard and spin up a reload loop.
+  const reloadGuardKey = (t: string) => `crescent.chunkReload:${t}`;
 
   // Resolve the active route to a component. Already-visited views swap in
   // synchronously (cached); first visits keep the previous view mounted until the
@@ -70,16 +80,47 @@
     if (cached) {
       View = cached;
       viewRoute = target;
+      loadError = false;
       return;
     }
     let active = true;
-    viewLoaders[target]().then((m) => {
-      viewCache.set(target, m.default);
-      if (active) {
-        View = m.default;
-        viewRoute = target;
-      }
-    });
+    loadError = false;
+    viewLoaders[target]()
+      .then((m) => {
+        viewCache.set(target, m.default);
+        if (active) {
+          View = m.default;
+          viewRoute = target;
+        }
+        try {
+          sessionStorage.removeItem(reloadGuardKey(target));
+        } catch {
+          /* storage disabled — nothing to clear */
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        let alreadyReloaded = false;
+        try {
+          alreadyReloaded = sessionStorage.getItem(reloadGuardKey(target)) === '1';
+        } catch {
+          /* storage disabled — skip straight to the visible error */
+          alreadyReloaded = true;
+        }
+        if (!alreadyReloaded) {
+          try {
+            sessionStorage.setItem(reloadGuardKey(target), '1');
+          } catch {
+            /* ignore */
+          }
+          location.reload();
+          return;
+        }
+        // A reload didn't fix it (genuinely offline, or the asset is really gone).
+        // Surface an error instead of silently stalling on the previous view.
+        console.error(`Failed to load route chunk: ${target}`, err);
+        loadError = true;
+      });
     return () => {
       active = false;
     };
@@ -231,7 +272,17 @@
         class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
-        {#if View && viewRoute === 'dashboard'}
+        {#if loadError}
+          <div class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-muted">
+            <span class="text-sm">This page failed to load.</span>
+            <button
+              class="press rounded-control bg-accent/10 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/15"
+              onclick={() => location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        {:else if View && viewRoute === 'dashboard'}
           <View bind:fromStr bind:toStr {spanLabel} />
         {:else if View}
           <View />
