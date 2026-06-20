@@ -8,7 +8,7 @@
   import { toISODate } from '$lib/utils/dates';
 
   let {
-    route = 'dashboard',
+    route = 'month',
     fromStr = $bindable(''),
     toStr = $bindable(''),
     spanLabel = '',
@@ -44,7 +44,7 @@
   ];
 
   const help = $derived(pageHelp[route]);
-  const headerLabel = $derived(route === 'dashboard' ? 'Filters' : help ? 'Help' : 'Details');
+  const headerLabel = $derived(route === 'statistics' ? 'Filters' : help ? 'Help' : 'Details');
 </script>
 
 <!-- Backdrop -->
@@ -74,7 +74,7 @@
 
   <!-- Content -->
   <div class="flex-1 overflow-y-auto overscroll-contain px-4 py-2">
-    {#if route === 'dashboard'}
+    {#if route === 'statistics'}
       <div class="divide-y divide-hairline">
         <!-- Quick presets -->
         <section class="py-4 first:pt-2">

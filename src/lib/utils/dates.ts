@@ -25,6 +25,12 @@ export function formatMonthLabel(bucket: string, locale: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 }
 
+/** Shift a YYYY-MM bucket by `delta` months (can be negative). */
+export function shiftMonth(bucket: string, delta: number): string {
+  const [y, m] = bucket.split('-').map(Number);
+  return monthKey(new Date(y, m - 1 + delta, 1));
+}
+
 /** Calendar months + leftover days between two dates (to >= from). */
 export function monthsDaysBetween(from: Date, to: Date): { months: number; days: number } {
   let months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());

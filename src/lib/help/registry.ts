@@ -42,14 +42,18 @@ export const pageHelp: Record<string, PageHelp> = {
     ]
   },
 
-  dashboard: {
-    title: 'Dashboard',
+  month: {
+    title: 'Month',
     intro:
-      'A snapshot of your money for the selected date range. Change the range with the filters above.',
+      'Everything scoped to one calendar month. Use the arrows to step back to a previous month or return to the current one.',
     sections: [
       {
-        heading: 'Summary cards',
-        body: 'Income, spending and net are for the selected range. Liquid balance is different: it’s the real money on hand — your account starting balances plus every transaction since — and ignores the range.'
+        heading: 'This month',
+        body: 'Income, spending and net are for the month you’ve selected. Liquid balance is different: it’s the real money on hand — your account starting balances plus every transaction since — and ignores the month.'
+      },
+      {
+        heading: 'Monthly plan',
+        body: 'Your budget applied to this month’s income, so percentage and tracked-spending buckets reflect what actually happened that month — not an all-time average.'
       },
       {
         heading: 'Anomalies',
@@ -58,7 +62,7 @@ export const pageHelp: Record<string, PageHelp> = {
     ],
     terms: [
       { term: 'Liquid balance', def: 'Starting balances + all transactions since. What your bank should show.' },
-      { term: 'Net', def: 'Income minus spending over the selected range.' },
+      { term: 'Net', def: 'Income minus spending for the selected month.' },
       { term: 'Anomaly', def: 'A category whose spending this month is an unusual jump versus your recent norm.' }
     ]
   },
@@ -83,14 +87,23 @@ export const pageHelp: Record<string, PageHelp> = {
     ]
   },
 
-  monthly: {
-    title: 'Breakdown',
-    intro: 'Income, spending and net for each month, so you can see the trend over time.',
+  statistics: {
+    title: 'Statistics',
+    intro:
+      'Trends across a date range you choose. Set the range with the filters in this panel (or the control on the page).',
     sections: [
       {
-        heading: 'Reading it',
-        body: 'Each month shows what came in, what went out, and the difference. A positive net means you saved that month.'
+        heading: 'Charts',
+        body: 'Income vs Spending and Savings rate are bucketed per month within the range; Spending by category totals the whole range.'
+      },
+      {
+        heading: 'Monthly table',
+        body: 'Each row shows what came in, what went out, and the difference for that month. A positive net means you saved that month.'
       }
+    ],
+    terms: [
+      { term: 'Savings rate', def: 'Net divided by income for a month — the share of income you kept.' },
+      { term: 'Net', def: 'Income minus spending.' }
     ]
   },
 

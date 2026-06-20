@@ -115,7 +115,7 @@ Bokeh radial gradients are **disabled in light mode** (`--bokeh-a1: 0; --bokeh-a
 - Pure logic (state machines, rule engine, aggregations, parsers) lives in plain `.ts` files, no Svelte globals, so vitest can test them without DOM or worker setup.
 - Svelte 5 runes (`$state`, `$derived`, `$effect`, `$props`) throughout; no Svelte 4 options API.
 - Config is financial-data-free (no balances, no transactions) and is stored in plaintext — shareable as a template.
-- Hash-based routing: `#dashboard`, `#transactions`, `#monthly`, `#plan`, `#import`, `#rules`, `#settings`. Falls back to `#dashboard`.
+- Hash-based routing: `#month`, `#statistics`, `#transactions`, `#plan`, `#import`, `#rules`, `#settings`, `#start`. Falls back to `#month`. Legacy `#dashboard`/`#monthly` alias to `#month`/`#statistics`.
 
 ## Dev / verify workflow
 

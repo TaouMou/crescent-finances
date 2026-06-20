@@ -1,8 +1,8 @@
 <script lang="ts">
   import {
-    SquaresFour,
     ArrowsLeftRight,
     CalendarBlank,
+    ChartLineUp,
     ChartPieSlice,
     UploadSimple,
     GearSix,
@@ -21,7 +21,7 @@
   import { Button } from '$lib/components/ui/button';
 
   let {
-    active = 'dashboard',
+    active = 'month',
     showClose = true,
     onClose
   }: {
@@ -32,9 +32,9 @@
 
   const nav = [
     { id: 'start', label: 'Getting started', icon: Compass },
-    { id: 'dashboard', label: 'Dashboard', icon: SquaresFour },
+    { id: 'month', label: 'Month', icon: CalendarBlank },
     { id: 'transactions', label: 'Transactions', icon: ArrowsLeftRight },
-    { id: 'monthly', label: 'Breakdown', icon: CalendarBlank },
+    { id: 'statistics', label: 'Statistics', icon: ChartLineUp },
     { id: 'rules', label: 'Rules', icon: Funnel }
   ];
 
