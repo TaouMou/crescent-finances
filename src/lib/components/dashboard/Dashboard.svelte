@@ -8,6 +8,7 @@
   import SavingsRate from '$lib/components/charts/SavingsRate.svelte';
   import DistributionView from '$lib/components/sections/DistributionView.svelte';
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
+  import DateRangeControl from '$lib/components/ui/DateRangeControl.svelte';
   import {
     anomalies,
     distribution as demoDistribution,
@@ -109,6 +110,12 @@
 </script>
 
 <div class="mx-auto max-w-[1180px] space-y-5 p-6">
+  <!-- Inline date range (desktop); mobile reaches it via the right drawer -->
+  <div class="hidden items-center justify-between gap-3 lg:flex">
+    <h2 class="text-sm font-medium text-muted">Overview</h2>
+    <DateRangeControl bind:fromStr bind:toStr {spanLabel} />
+  </div>
+
   <SummaryCards />
 
   {#if !hasData && !$txLoading}
