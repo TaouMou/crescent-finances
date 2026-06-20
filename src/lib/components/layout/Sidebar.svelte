@@ -92,7 +92,8 @@
       </a>
     {/each}
 
-    <!-- Plan: expands to user-defined section groups -->
+    <!-- Planning section -->
+    <p class="px-2.5 pb-0.5 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted/50">Planning</p>
     <button
       class="flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-muted transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
       onclick={() => (planOpen = !planOpen)}

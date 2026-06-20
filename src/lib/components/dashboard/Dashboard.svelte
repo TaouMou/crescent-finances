@@ -112,32 +112,18 @@
   <SummaryCards />
 
   {#if !hasData && !$txLoading}
-    <Card class="ring-1 ring-accent/15">
-      <div class="flex flex-col items-center gap-2 py-6 text-center">
-        <p class="text-base font-medium text-ink">
-          {showDemo ? 'Showing sample data' : 'No transactions yet'}
-        </p>
-        <p class="max-w-md text-sm text-muted">
-          {showDemo
-            ? 'These are illustrative figures. Import a CSV bank export to replace them with your own.'
-            : 'Import a CSV bank export to see your real numbers here.'}
-        </p>
-        <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
-          <a
-            href="#import"
-            class="press flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90"
-          >
-            <ArrowUpRight class="h-4 w-4" /> Import CSV
-          </a>
-          <a
-            href="#start"
-            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-4 text-sm font-medium text-ink hover:bg-ink/5"
-          >
-            <Compass class="h-4 w-4" /> New here? Start guide
-          </a>
-        </div>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-control border border-accent/20 bg-accent/5 px-4 py-2.5 text-sm">
+      <span class="font-medium text-ink">{showDemo ? 'Showing sample data' : 'No transactions yet'}</span>
+      <span class="text-muted">{showDemo ? 'Illustrative figures — import your own CSV to replace them.' : 'Import a CSV bank export to see your real numbers.'}</span>
+      <div class="ml-auto flex items-center gap-3">
+        <a href="#import" class="flex items-center gap-1 font-medium text-accent hover:text-accent/80">
+          <ArrowUpRight class="h-3.5 w-3.5" /> Import CSV
+        </a>
+        <a href="#start" class="flex items-center gap-1 text-muted hover:text-ink">
+          <Compass class="h-3.5 w-3.5" /> Start guide
+        </a>
       </div>
-    </Card>
+    </div>
   {/if}
 
   <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
