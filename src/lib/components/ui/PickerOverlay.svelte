@@ -61,7 +61,7 @@
          transformed/clipping ancestor. -->
     <div class="fixed inset-0 z-[60] flex flex-col justify-end" use:portal>
       <button
-        class="absolute inset-0 cursor-default bg-ink/40 backdrop-blur-[2px]"
+        class="absolute inset-0 cursor-default bg-black/40 backdrop-blur-[2px]"
         aria-label="Close {label.toLowerCase()}"
         onclick={() => (open = false)}
         transition:fade={{ duration: reduce ? 0 : 150 }}

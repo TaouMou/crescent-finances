@@ -17,7 +17,6 @@
   import TargetProgress from '$lib/components/sections/TargetProgress.svelte';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
-  import { openNewGroupRequested } from '$lib/stores/plan-ui';
   import { evaluatePlan } from '$lib/sections/engine';
   import { planTemplates, type PlanTemplate } from '$lib/sections/templates';
   import { safeParseConfig } from '$lib/config/schema';
@@ -359,17 +358,6 @@
     }
   }
 
-  // Consume the sidebar's "+ New budget" request reactively rather than only on
-  // mount: the flag can be set while PlanView is already mounted (clicking the
-  // sidebar button while on #plan doesn't trigger a hashchange/remount), so an
-  // onMount-only read would leave it stuck true and spawn the modal on the next
-  // navigation to Plan.
-  $effect(() => {
-    if ($openNewGroupRequested) {
-      openNewGroupRequested.set(false);
-      newGroup();
-    }
-  });
 </script>
 
 <div class="mx-auto max-w-[860px] space-y-6 p-6">
