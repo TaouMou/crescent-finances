@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { scale, fly, fade } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
   import { X } from 'phosphor-svelte';
   import { portal } from '$lib/actions/portal';
 
@@ -114,7 +115,7 @@
       style="box-shadow: var(--shadow-card)"
       role="dialog"
       aria-label={label}
-      transition:scale={{ duration: reduce ? 0 : 150, start: 0.96, opacity: 0 }}
+      transition:scale={{ duration: reduce ? 0 : 190, start: 0.9, opacity: 0, easing: backOut }}
     >
       {@render children()}
     </div>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Check } from 'phosphor-svelte';
+  import { scale } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
   import PickerOverlay from './PickerOverlay.svelte';
   import {
     hexToHsv,
@@ -36,6 +38,9 @@
   let open = $state(false);
   let trigger = $state<HTMLButtonElement>();
   let align = $state<'left' | 'right'>('left');
+
+  const reduce =
+    typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Working HSV state. Kept independent of `value` so hue survives moves into
   // achromatic regions (grey/black), where hex→hsv would lose it.
@@ -243,13 +248,20 @@
 
     <!-- Presets -->
     <div class="mt-3 grid grid-cols-9 gap-1.5">
-      {#each PRESETS as c (c)}
+      {#each PRESETS as c, i (c)}
         {@const sel = normalizeHex(value) === c}
         <button
           type="button"
           onclick={() => pickPreset(c)}
           aria-label="Use {c}"
           aria-pressed={sel}
+          in:scale={{
+            duration: reduce ? 0 : 240,
+            delay: reduce ? 0 : 30 + i * 11,
+            start: 0.4,
+            opacity: 0,
+            easing: backOut
+          }}
           class="press grid aspect-square w-full place-items-center rounded-[5px] ring-1 ring-inset ring-ink/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           style="background-color: {c}"
         >
