@@ -135,6 +135,21 @@
   let newAccName = $state('');
   let newAccKind = $state<'bank' | 'cash' | 'card' | 'savings'>('bank');
 
+  // Passed to each Select's `items` so the trigger shows the friendly label
+  // immediately; without it bits-ui shows the raw value (e.g. "bank") until the
+  // dropdown is first opened.
+  const accountKindItems = [
+    { value: 'bank', label: 'Bank' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'card', label: 'Card' },
+    { value: 'savings', label: 'Savings' }
+  ];
+  const anomalyLevelItems = [
+    { value: 'high', label: 'High — flag more' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low — only big surprises' }
+  ];
+
   function addAccount() {
     const name = newAccName.trim();
     if (!name) return;
@@ -546,15 +561,14 @@
               onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
               class="h-8 min-w-0 flex-1 px-2.5"
             />
-            <Select type="single" value={acc.kind} onValueChange={(v) => updateAccount(acc.id, 'kind', v)}>
+            <Select type="single" items={accountKindItems} value={acc.kind} onValueChange={(v) => updateAccount(acc.id, 'kind', v)}>
               <SelectTrigger class="h-8 w-28 shrink-0 py-0 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bank" label="Bank" />
-                <SelectItem value="cash" label="Cash" />
-                <SelectItem value="card" label="Card" />
-                <SelectItem value="savings" label="Savings" />
+                {#each accountKindItems as it (it.value)}
+                  <SelectItem value={it.value} label={it.label} />
+                {/each}
               </SelectContent>
             </Select>
             <Button
@@ -576,15 +590,14 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
       <Input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class="w-full min-w-0 sm:flex-1" />
       <div class="flex gap-2">
-        <Select type="single" value={newAccKind} onValueChange={(v) => (newAccKind = v as 'bank' | 'cash' | 'card' | 'savings')}>
+        <Select type="single" items={accountKindItems} value={newAccKind} onValueChange={(v) => (newAccKind = v as 'bank' | 'cash' | 'card' | 'savings')}>
           <SelectTrigger class="w-auto flex-1 sm:w-32 sm:flex-none">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="bank" label="Bank" />
-            <SelectItem value="cash" label="Cash" />
-            <SelectItem value="card" label="Card" />
-            <SelectItem value="savings" label="Savings" />
+            {#each accountKindItems as it (it.value)}
+              <SelectItem value={it.value} label={it.label} />
+            {/each}
           </SelectContent>
         </Select>
         <Button onclick={addAccount} disabled={!newAccName.trim()} class="flex-1 sm:flex-none">
@@ -688,14 +701,14 @@
       </label>
       <label class="flex flex-col gap-1">
         <span class="text-xs text-muted">Sensitivity</span>
-        <Select type="single" value={madKLevel($config?.settings.anomaly.madK ?? 3)} onValueChange={(v) => setAnomaly('madK', LEVEL_TO_MADK[v] ?? 3)}>
+        <Select type="single" items={anomalyLevelItems} value={madKLevel($config?.settings.anomaly.madK ?? 3)} onValueChange={(v) => setAnomaly('madK', LEVEL_TO_MADK[v] ?? 3)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="high" label="High — flag more" />
-            <SelectItem value="medium" label="Medium" />
-            <SelectItem value="low" label="Low — only big surprises" />
+            {#each anomalyLevelItems as it (it.value)}
+              <SelectItem value={it.value} label={it.label} />
+            {/each}
           </SelectContent>
         </Select>
       </label>

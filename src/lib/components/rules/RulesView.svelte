@@ -105,6 +105,22 @@
 
   const categories = $derived($config?.categories ?? []);
   const tags = $derived($config?.tags ?? []);
+
+  // Option lists passed to each Select's `items` so the trigger can show the
+  // friendly label before the (portaled) dropdown has mounted — otherwise
+  // bits-ui falls back to the raw value (e.g. "label", "keyword").
+  const matchFieldItems = [
+    { value: 'label', label: 'Description' },
+    { value: 'entity', label: 'Entity' }
+  ];
+  const matchTypeItems = [
+    { value: 'keyword', label: 'Contains keyword' },
+    { value: 'regex', label: 'Regex pattern' }
+  ];
+  const categoryItems = $derived([
+    { value: '', label: '— no change —' },
+    ...categories.map((c) => ({ value: c.id, label: c.name }))
+  ]);
 </script>
 
 <div class="mx-auto max-w-[860px] space-y-6 p-6">
@@ -156,6 +172,7 @@
           <span class="text-xs text-muted">Match field</span>
           <Select
             type="single"
+            items={matchFieldItems}
             value={editing.match.field}
             onValueChange={(v) => editing && (editing.match.field = v as 'label' | 'entity')}
           >
@@ -163,8 +180,9 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="label" label="Description" />
-              <SelectItem value="entity" label="Entity" />
+              {#each matchFieldItems as it (it.value)}
+                <SelectItem value={it.value} label={it.label} />
+              {/each}
             </SelectContent>
           </Select>
         </label>
@@ -174,6 +192,7 @@
           <span class="text-xs text-muted">Match type</span>
           <Select
             type="single"
+            items={matchTypeItems}
             value={editing.match.type}
             onValueChange={(v) => editing && (editing.match.type = v as 'keyword' | 'regex')}
           >
@@ -181,8 +200,9 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="keyword" label="Contains keyword" />
-              <SelectItem value="regex" label="Regex pattern" />
+              {#each matchTypeItems as it (it.value)}
+                <SelectItem value={it.value} label={it.label} />
+              {/each}
             </SelectContent>
           </Select>
         </label>
@@ -202,16 +222,16 @@
           <span class="text-xs text-muted">Set category</span>
           <Select
             type="single"
+            items={categoryItems}
             value={editing.setCategoryId ?? ''}
             onValueChange={(v) => editing && (editing.setCategoryId = v || undefined)}
           >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="— no change —" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="" label="— no change —" />
-              {#each categories as cat (cat.id)}
-                <SelectItem value={cat.id} label={cat.name} />
+              {#each categoryItems as it (it.value)}
+                <SelectItem value={it.value} label={it.label} />
               {/each}
             </SelectContent>
           </Select>
