@@ -56,8 +56,7 @@
   }}
 />
 
-{#if open}
-  {#if isMobile}
+{#if open && isMobile}
     <!-- Full-screen mobile sheet, portaled to <body> so it escapes any
          transformed/clipping ancestor. -->
     <div class="fixed inset-0 z-[60] flex flex-col justify-end" use:portal>
@@ -98,7 +97,7 @@
         </div>
       </div>
     </div>
-  {:else}
+{:else if open}
     <!-- Desktop anchored popover (parent must be `relative`). -->
     <button
       class="fixed inset-0 z-40 cursor-default"
@@ -119,5 +118,4 @@
     >
       {@render children()}
     </div>
-  {/if}
 {/if}
