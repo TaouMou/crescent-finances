@@ -24,9 +24,11 @@
 
   let {
     active = 'dashboard',
+    showClose = true,
     onClose
   }: {
     active?: string;
+    showClose?: boolean;
     onClose?: () => void;
   } = $props();
 
@@ -65,15 +67,17 @@
       </div>
       <span class="truncate bg-gradient-to-r from-accent to-accent/60 bg-clip-text text-base font-bold tracking-tight text-transparent">Crescent</span>
     </div>
-    <Button
-      variant="ghost"
-      size="icon"
-      class="text-muted hover:text-ink"
-      onclick={() => onClose?.()}
-      aria-label="Close sidebar"
-    >
-      <X class="h-5 w-5" />
-    </Button>
+    {#if showClose}
+      <Button
+        variant="ghost"
+        size="icon"
+        class="text-muted hover:text-ink"
+        onclick={() => onClose?.()}
+        aria-label="Close sidebar"
+      >
+        <X class="h-5 w-5" />
+      </Button>
+    {/if}
   </div>
 
   <nav class="flex-1 touch-pan-y space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-1">

@@ -4,10 +4,12 @@
 
   let {
     title = 'Dashboard',
+    showPanel = false,
     onMenu,
     onPanel
   }: {
     title?: string;
+    showPanel?: boolean;
     onMenu?: () => void;
     onPanel?: () => void;
   } = $props();
@@ -16,13 +18,14 @@
 <header
   class="relative flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-hairline px-4 md:px-6"
 >
-  <!-- Accent aurora glow along the top edge -->
+  <!-- Faint accent wash along the leading edge -->
   <div class="topbar-aurora pointer-events-none absolute inset-0" aria-hidden="true"></div>
 
+  <!-- Menu toggle: only on mobile; desktop has a persistent nav rail. -->
   <Button
     variant="ghost"
     size="icon"
-    class="control-well relative z-10 shrink-0 text-muted hover:text-ink"
+    class="relative z-10 shrink-0 text-muted hover:text-ink lg:hidden"
     onclick={() => onMenu?.()}
     aria-label="Open menu"
   >
@@ -30,15 +33,17 @@
   </Button>
   <h1 class="relative z-10 min-w-0 truncate text-base font-semibold tracking-tight text-ink">{title}</h1>
 
-  <div class="relative z-10 ml-auto">
-    <Button
-      variant="ghost"
-      size="icon"
-      class="control-well shrink-0 text-muted hover:text-ink"
-      onclick={() => onPanel?.()}
-      aria-label="Toggle details panel"
-    >
-      <Faders class="h-[18px] w-[18px]" />
-    </Button>
-  </div>
+  {#if showPanel}
+    <div class="relative z-10 ml-auto lg:hidden">
+      <Button
+        variant="ghost"
+        size="icon"
+        class="shrink-0 text-muted hover:text-ink"
+        onclick={() => onPanel?.()}
+        aria-label="Toggle details panel"
+      >
+        <Faders class="h-[18px] w-[18px]" />
+      </Button>
+    </div>
+  {/if}
 </header>

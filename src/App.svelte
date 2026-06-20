@@ -168,16 +168,21 @@
   <LockScreen />
 {:else}
   <div class="flex h-[100dvh] w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
-    <!-- Left sidebar overlay -->
+    <!-- Persistent nav rail (desktop) -->
+    <div class="hidden shrink-0 lg:block">
+      <Sidebar active={route} showClose={false} />
+    </div>
+
+    <!-- Left sidebar overlay (mobile) -->
     {#if sidebarOpen}
       <button
-        class="fixed inset-0 z-40 w-full bg-black/40"
+        class="fixed inset-0 z-40 w-full bg-black/40 lg:hidden"
         transition:fade={{ duration: 200 }}
         onclick={() => (sidebarOpen = false)}
         aria-label="Close menu"
       ></button>
       <div
-        class="fixed inset-y-0 left-0 z-50 overscroll-contain"
+        class="fixed inset-y-0 left-0 z-50 overscroll-contain lg:hidden"
         transition:fly={{ x: -280, duration: 250, easing: cubicOut }}
       >
         <Sidebar active={route} onClose={() => (sidebarOpen = false)} />
@@ -198,6 +203,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar
         {title}
+        showPanel={route === 'dashboard'}
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
