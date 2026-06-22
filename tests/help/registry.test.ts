@@ -3,7 +3,7 @@ import { pageHelp } from '../../src/lib/help/registry';
 
 // Mirrors the routes in App.svelte's `titles` map. If a route is added there,
 // add help for it here too — this test guards against drift.
-const ROUTES = ['start', 'dashboard', 'transactions', 'monthly', 'plan', 'import', 'rules', 'settings'];
+const ROUTES = ['start', 'month', 'statistics', 'transactions', 'plan', 'import', 'rules', 'settings'];
 
 describe('pageHelp registry', () => {
   it('has an entry for every app route', () => {

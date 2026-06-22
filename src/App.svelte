@@ -36,10 +36,16 @@
   const devBypass = import.meta.env.VITE_DEV_BYPASS === 'true';
 
   // ----- hash router -----
+  // Legacy hashes redirect to their replacement pages.
+  const routeAliases: Record<string, string> = {
+    dashboard: 'month',
+    monthly: 'statistics'
+  };
   let route = $state(currentRoute());
 
   function currentRoute(): string {
-    return (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'dashboard';
+    const raw = (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'month';
+    return routeAliases[raw] ?? raw;
   }
 
   // ----- lazy-loaded route views -----
@@ -49,17 +55,17 @@
   // RightSidebar, LockScreen) stays eager since it renders on every route.
   const viewLoaders: Record<string, () => Promise<{ default: Component }>> = {
     start: () => import('$lib/components/start/StartView.svelte'),
+    month: () => import('$lib/components/month/MonthView.svelte'),
+    statistics: () => import('$lib/components/statistics/StatisticsView.svelte'),
     import: () => import('$lib/components/import/ImportView.svelte'),
     transactions: () => import('$lib/components/transactions/TransactionsView.svelte'),
     rules: () => import('$lib/components/rules/RulesView.svelte'),
-    monthly: () => import('$lib/components/monthly/MonthlyView.svelte'),
     plan: () => import('$lib/components/plan/PlanView.svelte'),
-    settings: () => import('$lib/components/settings/SettingsView.svelte'),
-    dashboard: () => import('$lib/components/dashboard/Dashboard.svelte')
+    settings: () => import('$lib/components/settings/SettingsView.svelte')
   };
   const viewCache = new Map<string, Component>();
   let View = $state<Component | null>(null);
-  let viewRoute = $state('dashboard');
+  let viewRoute = $state('month');
   let loadError = $state(false);
 
   // Guards a one-time hard reload per route after a failed chunk load. A rejected
@@ -75,7 +81,7 @@
   // synchronously (cached); first visits keep the previous view mounted until the
   // chunk resolves, so navigation never flashes a blank pane.
   $effect(() => {
-    const target = viewLoaders[route] ? route : 'dashboard';
+    const target = viewLoaders[route] ? route : 'month';
     const cached = viewCache.get(target);
     if (cached) {
       View = cached;
@@ -128,15 +134,15 @@
 
   const titles: Record<string, string> = {
     start: 'Getting started',
-    dashboard: 'Dashboard',
+    month: 'Month',
+    statistics: 'Statistics',
     import: 'Import',
     transactions: 'Transactions',
     rules: 'Rules',
-    monthly: 'Monthly',
     plan: 'Plan',
     settings: 'Settings'
   };
-  const title = $derived(titles[route] ?? 'Dashboard');
+  const title = $derived(titles[route] ?? 'Month');
 
   function navigate(newRoute: string) {
     if (newRoute === route) return;
@@ -193,7 +199,7 @@
       return; // storage disabled — don't auto-redirect
     }
     // Only when landing on the default route; respect any explicit deep link.
-    if (currentRoute() === 'dashboard') {
+    if (currentRoute() === 'month') {
       location.hash = 'start';
     }
   }
@@ -244,7 +250,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar
         {title}
-        showPanel={route === 'dashboard'}
+        showPanel={route === 'statistics'}
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
@@ -282,7 +288,7 @@
               Reload
             </button>
           </div>
-        {:else if View && viewRoute === 'dashboard'}
+        {:else if View && viewRoute === 'statistics'}
           <View bind:fromStr bind:toStr {spanLabel} />
         {:else if View}
           <View />
