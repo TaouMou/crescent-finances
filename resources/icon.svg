@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <mask id="m">
+      <rect width="1024" height="1024" fill="black"/>
+      <circle cx="512" cy="512" r="320" fill="white"/>
+      <circle cx="660" cy="445" r="260" fill="black"/>
+    </mask>
+  </defs>
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#131618"/>
+  <!-- Crescent moon in teal -->
+  <rect width="1024" height="1024" fill="#0DA882" mask="url(#m)"/>
+</svg>

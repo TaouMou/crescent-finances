@@ -14,6 +14,8 @@
   import { formatMoney } from '$lib/utils/currency';
   import Card from '$lib/components/ui/Card.svelte';
   import { cn } from '$lib/utils/cn';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
 
   type Step = 'select' | 'mapping' | 'done';
   let step = $state<Step>('select');
@@ -316,13 +318,7 @@
             Choose file
             <input type="file" accept=".csv,text/csv" class="hidden" onchange={onFile} />
           </label>
-          <button
-            class="press rounded-control border border-hairline bg-surface px-4 py-2 text-sm text-ink hover:bg-ink/5"
-            onclick={loadSample}
-            disabled={busy}
-          >
-            Use sample.csv
-          </button>
+          <Button variant="outline" onclick={loadSample} disabled={busy}>Use sample.csv</Button>
         </div>
       </div>
     </Card>
@@ -333,7 +329,7 @@
       <!-- Detection summary -->
       <div class="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted">
         <span class="inline-flex items-center gap-1 rounded-full bg-ink/5 px-2 py-1"><FileCsv size={14} /> {parsed.totalRows} rows</span>
-        <span class="rounded-full bg-ink/5 px-2 py-1">Delimiter “{parsed.delimiter}”</span>
+        <span class="rounded-full bg-ink/5 px-2 py-1">Delimiter "{parsed.delimiter}"</span>
         <span class="rounded-full bg-ink/5 px-2 py-1">{parsed.encoding}</span>
         <button class="press rounded-full bg-ink/5 px-2 py-1 hover:bg-ink/10" onclick={toggleHeader}>
           {parsed.hasHeader ? 'Has header row' : 'No header row'} · toggle
@@ -343,7 +339,7 @@
       <label class="mb-4 block">
         <span class="mb-1 block text-xs font-medium text-muted">Bank preset</span>
         <select
-          class="field"
+          class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           bind:value={selectedBankKey}
           onchange={onBankChange}
         >
@@ -358,7 +354,7 @@
         <label class="mb-4 block">
           <span class="mb-1 block text-xs font-medium text-muted">Reuse a saved profile</span>
           <select
-            class="field"
+            class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             bind:value={selectedProfileId}
             onchange={() => selectedProfileId && applyProfile(selectedProfileId)}
           >
@@ -371,22 +367,22 @@
       <!-- Mapping controls -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="block">
-          <span class="lbl">Date column</span>
-          <select class="field" bind:value={mapDate} onchange={rebuildPreview}>
+          <span class="mb-1 block text-xs font-medium text-muted">Date column</span>
+          <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapDate} onchange={rebuildPreview}>
             <option value="">—</option>
             {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
           </select>
         </label>
         <label class="block">
-          <span class="lbl">Label column</span>
-          <select class="field" bind:value={mapLabel} onchange={rebuildPreview}>
+          <span class="mb-1 block text-xs font-medium text-muted">Label column</span>
+          <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapLabel} onchange={rebuildPreview}>
             <option value="">—</option>
             {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
           </select>
         </label>
 
         <div class="sm:col-span-2">
-          <span class="lbl">Amount</span>
+          <span class="mb-1 block text-xs font-medium text-muted">Amount</span>
           <div class="mb-2 inline-flex rounded-control border border-hairline p-0.5 text-xs">
             <button
               class={cn('press rounded-[4px] px-3 py-1', amountMode === 'split' ? 'bg-accent/10 text-accent' : 'text-muted')}
@@ -398,17 +394,17 @@
             >Single column</button>
           </div>
           {#if amountMode === 'single'}
-            <select class="field" bind:value={mapAmount} onchange={rebuildPreview}>
+            <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapAmount} onchange={rebuildPreview}>
               <option value="">—</option>
               {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
             </select>
           {:else}
             <div class="grid grid-cols-2 gap-3">
-              <select class="field" bind:value={mapDebit} onchange={rebuildPreview}>
+              <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapDebit} onchange={rebuildPreview}>
                 <option value="">Debit —</option>
                 {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
               </select>
-              <select class="field" bind:value={mapCredit} onchange={rebuildPreview}>
+              <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapCredit} onchange={rebuildPreview}>
                 <option value="">Credit —</option>
                 {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
               </select>
@@ -417,37 +413,37 @@
         </div>
 
         <label class="block">
-          <span class="lbl">Account</span>
-          <select class="field" bind:value={defaultAccountId} onchange={rebuildPreview}>
+          <span class="mb-1 block text-xs font-medium text-muted">Account</span>
+          <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={defaultAccountId} onchange={rebuildPreview}>
             {#if accounts.length === 0}<option value={null}>No accounts yet</option>{/if}
             {#each accounts as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
           </select>
         </label>
         <label class="block">
-          <span class="lbl">Category column <span class="font-normal text-muted/70">(optional)</span></span>
-          <select class="field" bind:value={mapCategory} onchange={rebuildPreview}>
+          <span class="mb-1 block text-xs font-medium text-muted">Category column <span class="font-normal text-muted/70">(optional)</span></span>
+          <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapCategory} onchange={rebuildPreview}>
             <option value="">— none —</option>
             {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
           </select>
         </label>
         <label class="block">
-          <span class="lbl">Clean-name column <span class="font-normal text-muted/70">(optional)</span></span>
-          <select class="field" bind:value={mapEntity} onchange={rebuildPreview}>
+          <span class="mb-1 block text-xs font-medium text-muted">Clean-name column <span class="font-normal text-muted/70">(optional)</span></span>
+          <select class="h-10 w-full rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" bind:value={mapEntity} onchange={rebuildPreview}>
             <option value="">— none —</option>
             {#each parsed.headers as h (h)}<option value={h}>{h}</option>{/each}
           </select>
         </label>
         <label class="block">
-          <span class="lbl">Date format</span>
-          <input class="field" bind:value={dateFormat} onchange={rebuildPreview} placeholder="dd/MM/yyyy" />
+          <span class="mb-1 block text-xs font-medium text-muted">Date format</span>
+          <Input bind:value={dateFormat} onchange={rebuildPreview} placeholder="dd/MM/yyyy" />
         </label>
         <label class="block">
-          <span class="lbl">Decimal separator</span>
-          <input class="field" bind:value={decimal} onchange={rebuildPreview} maxlength="1" />
+          <span class="mb-1 block text-xs font-medium text-muted">Decimal separator</span>
+          <Input bind:value={decimal} onchange={rebuildPreview} maxlength={1} />
         </label>
         <label class="block">
-          <span class="lbl">Thousands separator</span>
-          <input class="field" bind:value={thousands} onchange={rebuildPreview} maxlength="1" />
+          <span class="mb-1 block text-xs font-medium text-muted">Thousands separator</span>
+          <Input bind:value={thousands} onchange={rebuildPreview} maxlength={1} />
         </label>
       </div>
 
@@ -507,21 +503,17 @@
         Save these settings as a profile
       </label>
       {#if saveProfile}
-        <input class="field mt-2" bind:value={newProfileName} placeholder="Profile name (e.g. My bank)" />
+        <Input class="mt-2" bind:value={newProfileName} placeholder="Profile name (e.g. My bank)" />
       {/if}
 
       <!-- Actions -->
       <div class="mt-5 flex items-center justify-between">
-        <button class="press inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onclick={reset}>
+        <Button variant="ghost" class="gap-1 text-muted hover:text-ink" onclick={reset}>
           <ArrowLeft size={16} /> Back
-        </button>
-        <button
-          class={cn('press rounded-control bg-accent px-4 py-2 text-sm font-medium text-white', (!preview || preview.transactions.length === 0 || busy) && 'opacity-50')}
-          onclick={commit}
-          disabled={!preview || preview.transactions.length === 0 || busy}
-        >
+        </Button>
+        <Button onclick={commit} disabled={!preview || preview.transactions.length === 0 || busy}>
           {busy ? 'Importing…' : `Import ${preview?.transactions.length ?? 0} transactions`}
-        </button>
+        </Button>
       </div>
     </Card>
   {/if}
@@ -537,30 +529,8 @@
           {result.added} new{result.duplicates ? `, ${result.duplicates} duplicates skipped` : ''}.
         </p>
         <p class="text-xs text-muted">{$transactions} transactions stored in total.</p>
-        <button class="press mt-2 rounded-control border border-hairline bg-surface px-4 py-2 text-sm text-ink hover:bg-ink/5" onclick={reset}>
-          Import another file
-        </button>
+        <Button variant="outline" class="mt-2" onclick={reset}>Import another file</Button>
       </div>
     </Card>
   {/if}
 </div>
-
-<style>
-  .field {
-    width: 100%;
-    min-height: 40px;
-    padding: 0 0.625rem;
-    border-radius: var(--radius-control, 6px);
-    border: 1px solid rgb(var(--c-hairline));
-    background-color: rgb(var(--c-surface));
-    color: rgb(var(--c-ink));
-    font-size: 0.875rem;
-  }
-  .lbl {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: rgb(var(--c-muted));
-  }
-</style>

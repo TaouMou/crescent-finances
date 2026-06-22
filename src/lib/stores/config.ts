@@ -5,7 +5,7 @@
 
 import { writable } from 'svelte/store';
 import { configRepo } from '$lib/db/repos';
-import { emptyConfig } from '$lib/config/schema';
+import { emptyConfig } from '$lib/config/defaults';
 import type { AppConfig } from '$lib/types';
 
 function createConfigStore() {

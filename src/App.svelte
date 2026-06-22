@@ -1,21 +1,17 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Component } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import RightSidebar from '$lib/components/layout/RightSidebar.svelte';
-  import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
-  import ImportView from '$lib/components/import/ImportView.svelte';
-  import TransactionsView from '$lib/components/transactions/TransactionsView.svelte';
-  import RulesView from '$lib/components/rules/RulesView.svelte';
-  import MonthlyView from '$lib/components/monthly/MonthlyView.svelte';
-  import PlanView from '$lib/components/plan/PlanView.svelte';
-  import SettingsView from '$lib/components/settings/SettingsView.svelte';
   import LockScreen from '$lib/components/auth/LockScreen.svelte';
   import { vault } from '$lib/stores/vault';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
+  import { returnToStart } from '$lib/stores/start-ui';
+  import { ArrowLeft, X } from 'phosphor-svelte';
   import { monthsDaysBetween, formatSpan, isSameDay, toISODate } from '$lib/utils/dates';
 
   let sidebarOpen = $state(false);
@@ -40,22 +36,113 @@
   const devBypass = import.meta.env.VITE_DEV_BYPASS === 'true';
 
   // ----- hash router -----
+  // Legacy hashes redirect to their replacement pages.
+  const routeAliases: Record<string, string> = {
+    dashboard: 'month',
+    monthly: 'statistics'
+  };
   let route = $state(currentRoute());
 
   function currentRoute(): string {
-    return (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'dashboard';
+    const raw = (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') || 'month';
+    return routeAliases[raw] ?? raw;
   }
 
+  // ----- lazy-loaded route views -----
+  // Each view is its own dynamic import so Vite emits a separate chunk; only the
+  // active route's JS is fetched + parsed. Heavy views (Settings, Plan, Import,
+  // all charts) no longer sit on the first-paint path. The shell (Sidebar, Topbar,
+  // RightSidebar, LockScreen) stays eager since it renders on every route.
+  const viewLoaders: Record<string, () => Promise<{ default: Component }>> = {
+    start: () => import('$lib/components/start/StartView.svelte'),
+    month: () => import('$lib/components/month/MonthView.svelte'),
+    statistics: () => import('$lib/components/statistics/StatisticsView.svelte'),
+    import: () => import('$lib/components/import/ImportView.svelte'),
+    transactions: () => import('$lib/components/transactions/TransactionsView.svelte'),
+    rules: () => import('$lib/components/rules/RulesView.svelte'),
+    plan: () => import('$lib/components/plan/PlanView.svelte'),
+    settings: () => import('$lib/components/settings/SettingsView.svelte')
+  };
+  const viewCache = new Map<string, Component>();
+  let View = $state<Component | null>(null);
+  let viewRoute = $state('month');
+  let loadError = $state(false);
+
+  // Guards a one-time hard reload per route after a failed chunk load. A rejected
+  // dynamic import almost always means a stale cached index.html points at a
+  // hashed chunk that no longer exists on the server (a new deploy rotated the
+  // hashes). Routes already in memory keep working; the not-yet-visited ones 404.
+  // We can't recover that in-page, so we reload once to pull the fresh index +
+  // correct chunk URLs, keyed per route so a working route's success can't reset
+  // a different route's guard and spin up a reload loop.
+  const reloadGuardKey = (t: string) => `crescent.chunkReload:${t}`;
+
+  // Resolve the active route to a component. Already-visited views swap in
+  // synchronously (cached); first visits keep the previous view mounted until the
+  // chunk resolves, so navigation never flashes a blank pane.
+  $effect(() => {
+    const target = viewLoaders[route] ? route : 'month';
+    const cached = viewCache.get(target);
+    if (cached) {
+      View = cached;
+      viewRoute = target;
+      loadError = false;
+      return;
+    }
+    let active = true;
+    loadError = false;
+    viewLoaders[target]()
+      .then((m) => {
+        viewCache.set(target, m.default);
+        if (active) {
+          View = m.default;
+          viewRoute = target;
+        }
+        try {
+          sessionStorage.removeItem(reloadGuardKey(target));
+        } catch {
+          /* storage disabled — nothing to clear */
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        let alreadyReloaded = false;
+        try {
+          alreadyReloaded = sessionStorage.getItem(reloadGuardKey(target)) === '1';
+        } catch {
+          /* storage disabled — skip straight to the visible error */
+          alreadyReloaded = true;
+        }
+        if (!alreadyReloaded) {
+          try {
+            sessionStorage.setItem(reloadGuardKey(target), '1');
+          } catch {
+            /* ignore */
+          }
+          location.reload();
+          return;
+        }
+        // A reload didn't fix it (genuinely offline, or the asset is really gone).
+        // Surface an error instead of silently stalling on the previous view.
+        console.error(`Failed to load route chunk: ${target}`, err);
+        loadError = true;
+      });
+    return () => {
+      active = false;
+    };
+  });
+
   const titles: Record<string, string> = {
-    dashboard: 'Dashboard',
+    start: 'Getting started',
+    month: 'Month',
+    statistics: 'Statistics',
     import: 'Import',
     transactions: 'Transactions',
     rules: 'Rules',
-    monthly: 'Monthly',
     plan: 'Plan',
     settings: 'Settings'
   };
-  const title = $derived(titles[route] ?? 'Dashboard');
+  const title = $derived(titles[route] ?? 'Month');
 
   function navigate(newRoute: string) {
     if (newRoute === route) return;
@@ -80,14 +167,42 @@
   });
 
   // Load config + transactions once unlocked; reset cache on lock.
+  // On the very first unlock on this device, send the user to the Getting-started
+  // page once (tracked in localStorage). It stays reachable from the sidebar after.
+  let onboardChecked = false;
   $effect(() => {
     if (status === 'unlocked') {
       config.load();
       transactions.loadAll();
+      balances.load();
+      if (!onboardChecked) {
+        onboardChecked = true;
+        maybeRedirectToStart();
+      }
     } else if (status === 'locked') {
       transactions.reset();
+      balances.reset();
     }
   });
+
+  // Clear the "back to start" affordance once the user is back on the page.
+  $effect(() => {
+    if (route === 'start') returnToStart.set(false);
+  });
+
+  function maybeRedirectToStart() {
+    try {
+      if (localStorage.getItem('crescent.onboarded') === '1') return;
+      // Mark immediately so we only ever auto-redirect once, never in a loop.
+      localStorage.setItem('crescent.onboarded', '1');
+    } catch {
+      return; // storage disabled — don't auto-redirect
+    }
+    // Only when landing on the default route; respect any explicit deep link.
+    if (currentRoute() === 'month') {
+      location.hash = 'start';
+    }
+  }
 </script>
 
 {#if status === 'loading'}
@@ -99,17 +214,22 @@
 {:else if !devBypass && (status === 'locked' || status === 'unlocking')}
   <LockScreen />
 {:else}
-  <div class="flex h-screen w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
-    <!-- Left sidebar overlay -->
+  <div class="flex h-[100dvh] w-screen overflow-hidden bg-paper text-ink" in:fade={{ duration: 150 }}>
+    <!-- Persistent nav rail (desktop) -->
+    <div class="hidden shrink-0 lg:block">
+      <Sidebar active={route} showClose={false} />
+    </div>
+
+    <!-- Left sidebar overlay (mobile) -->
     {#if sidebarOpen}
       <button
-        class="fixed inset-0 z-40 w-full bg-black/40"
+        class="fixed inset-0 z-40 w-full bg-black/40 lg:hidden"
         transition:fade={{ duration: 200 }}
         onclick={() => (sidebarOpen = false)}
         aria-label="Close menu"
       ></button>
       <div
-        class="fixed inset-y-0 left-0 z-50 overscroll-contain"
+        class="fixed inset-y-0 left-0 z-50 overscroll-contain lg:hidden"
         transition:fly={{ x: -280, duration: 250, easing: cubicOut }}
       >
         <Sidebar active={route} onClose={() => (sidebarOpen = false)} />
@@ -130,27 +250,52 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <Topbar
         {title}
+        showPanel={route === 'statistics'}
         onMenu={() => (sidebarOpen = true)}
         onPanel={() => (rightOpen = !rightOpen)}
       />
+      {#if $returnToStart && route !== 'start'}
+        <div
+          class="flex items-center justify-between gap-2 border-b border-accent/20 bg-accent/5 px-4 py-1.5"
+          transition:fade={{ duration: 150 }}
+        >
+          <a
+            href="#start"
+            class="press flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+          >
+            <ArrowLeft class="h-4 w-4" /> Back to Getting started
+          </a>
+          <button
+            class="press grid h-7 w-7 place-items-center rounded-control text-muted hover:bg-ink/5 hover:text-ink"
+            onclick={() => returnToStart.set(false)}
+            aria-label="Dismiss"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+      {/if}
       <main
-        class={`flex-1 ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
+        class={`flex-1 touch-pan-y overscroll-y-contain ${route === 'transactions' ? 'overflow-hidden' : 'overflow-y-auto'} ${sidebarOpen || rightOpen ? 'overflow-hidden' : ''}`}
         style="view-transition-name: main-content;"
       >
-        {#if route === 'import'}
-          <ImportView />
-        {:else if route === 'transactions'}
-          <TransactionsView />
-        {:else if route === 'rules'}
-          <RulesView />
-        {:else if route === 'monthly'}
-          <MonthlyView />
-        {:else if route === 'plan'}
-          <PlanView />
-        {:else if route === 'settings'}
-          <SettingsView />
+        {#if loadError}
+          <div class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-muted">
+            <span class="text-sm">This page failed to load.</span>
+            <button
+              class="press rounded-control bg-accent/10 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/15"
+              onclick={() => location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        {:else if View && viewRoute === 'statistics'}
+          <View bind:fromStr bind:toStr {spanLabel} />
+        {:else if View}
+          <View />
         {:else}
-          <Dashboard bind:fromStr bind:toStr {spanLabel} />
+          <div class="flex h-full items-center justify-center text-muted">
+            <span class="text-sm">Loading…</span>
+          </div>
         {/if}
       </main>
     </div>

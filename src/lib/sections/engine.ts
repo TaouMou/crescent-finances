@@ -16,16 +16,42 @@
 
 import type { AssetPool, Section, SectionCalc, SectionGroup, Transaction } from '$lib/types';
 import type { DistributionGroup, DistributionSection, SectionKind, TargetSection } from '$lib/seed/dashboard';
-import { accountsBalance, summarize } from '$lib/aggregations';
+import { summarize } from '$lib/aggregations';
 import { filterSum } from './filter';
 
 type TargetCalc = Extract<SectionCalc, { type: 'target' }>;
 
-/** Net balance of the named asset pool (sum of its accounts' transactions); 0 if unknown. */
-function poolBalance(pools: AssetPool[], assetPoolId: string | undefined, txs: Transaction[]): number {
+/** Signed balance per (non-null) account, scoped to txs dated on/before `to`. */
+type AccountBalances = Map<string, number>;
+
+/**
+ * Net balance of every account in a single pass, so a plan with many
+ * pool-backed sections/goals doesn't re-scan the full transaction list once per
+ * section. Pass `to` to sum only transactions on or before that ISO date
+ * (cumulative-as-of); omit for the all-time balance.
+ */
+function accountBalanceIndex(txs: Transaction[], to?: string): AccountBalances {
+  const balances: AccountBalances = new Map();
+  for (const tx of txs) {
+    if (tx.accountId === null) continue;
+    if (to && tx.date > to) continue;
+    balances.set(tx.accountId, (balances.get(tx.accountId) ?? 0) + tx.amount);
+  }
+  return balances;
+}
+
+/** Net balance of the named asset pool from a precomputed index; 0 if unknown. */
+function poolBalance(
+  pools: AssetPool[],
+  assetPoolId: string | undefined,
+  balances: AccountBalances
+): number {
   if (!assetPoolId) return 0;
   const pool = pools.find((p) => p.id === assetPoolId);
-  return pool ? accountsBalance(txs, pool.accountIds) : 0;
+  if (!pool) return 0;
+  let sum = 0;
+  for (const id of pool.accountIds) sum += balances.get(id) ?? 0;
+  return sum;
 }
 
 /** Sections belonging to a group (by back-reference or group membership list), ordered. */
@@ -42,14 +68,20 @@ export function sectionsOfGroup(group: SectionGroup, sections: Section[]): Secti
  * is the period income; each member section's planned amount comes from its calc
  * (`percentage` of income, `fixed`, `remainder`, a `filterSum` planned hint, or
  * an `accountBalance` pool balance). `target` sections render separately.
+ *
+ * Pass `from`/`to` (ISO YYYY-MM-DD) to scope income and filterSum actuals to a
+ * specific period (e.g. a single calendar month). Omit for all-time evaluation.
  */
 export function evaluateDistribution(
   group: SectionGroup,
   sections: Section[],
   txs: Transaction[],
-  pools: AssetPool[] = []
+  pools: AssetPool[] = [],
+  from?: string,
+  to?: string,
+  balances: AccountBalances = accountBalanceIndex(txs, to)
 ): DistributionGroup {
-  const total = summarize(txs).income;
+  const total = summarize(txs, from, to).income;
   const members = sectionsOfGroup(group, sections).filter((s) => s.calc.type !== 'target');
 
   // First pass: planned for everything except remainder.
@@ -59,7 +91,7 @@ export function evaluateDistribution(
     if (c.type === 'percentage') planned.set(s.id, Math.round((c.percent / 100) * total));
     else if (c.type === 'fixed') planned.set(s.id, c.amount);
     else if (c.type === 'filterSum') planned.set(s.id, c.planned ?? 0);
-    else if (c.type === 'accountBalance') planned.set(s.id, Math.abs(poolBalance(pools, c.assetPoolId, txs)));
+    else if (c.type === 'accountBalance') planned.set(s.id, Math.abs(poolBalance(pools, c.assetPoolId, balances)));
   }
   // Second pass: remainder absorbs whatever income is left after the rest.
   const allocated = [...planned.values()].reduce((a, b) => a + b, 0);
@@ -78,11 +110,18 @@ export function evaluateDistribution(
           : total > 0
             ? Math.round((p / total) * 100)
             : undefined;
-    // filterSum sections draw a real actual from matching transactions; the
-    // others (percentage/fixed/remainder/accountBalance) carry actual == planned
-    // (a balance and the allocation intents have no separate "actual"). Actual is
-    // a positive magnitude to match how planned is expressed.
-    const actual = s.calc.type === 'filterSum' ? Math.abs(filterSum(txs, s.calc.filter)) : p;
+    // filterSum sections draw a real actual from matching transactions scoped to
+    // the selected period; the others carry actual == planned.
+    const actual =
+      s.calc.type === 'filterSum'
+        ? Math.abs(
+            filterSum(txs, {
+              ...s.calc.filter,
+              ...(from !== undefined ? { fromDate: from } : {}),
+              ...(to !== undefined ? { toDate: to } : {})
+            })
+          )
+        : p;
     // Tracked spending is the only type with a real actual ≠ planned, and it is a
     // spending bucket: over plan = bad. The allocation intents always sit on plan
     // (actual == planned), so their direction never colours a delta.
@@ -96,11 +135,16 @@ export function evaluateDistribution(
 /**
  * Extract `target` sections as goal-progress items, ordered. `current` reads the
  * linked asset pool's balance when `assetPoolId` is set, else 0.
+ *
+ * Pass `to` (ISO YYYY-MM-DD) to compute the pool balance as of that date
+ * (cumulative savings up to month-end). Omit for the all-time balance.
  */
 export function evaluateTargets(
   sections: Section[],
   txs: Transaction[] = [],
-  pools: AssetPool[] = []
+  pools: AssetPool[] = [],
+  to?: string,
+  balances: AccountBalances = accountBalanceIndex(txs, to)
 ): TargetSection[] {
   return sections
     .filter((s) => s.calc.type === 'target')
@@ -111,7 +155,7 @@ export function evaluateTargets(
         id: s.id,
         name: s.name,
         color: s.color,
-        current: Math.max(0, poolBalance(pools, c.assetPoolId, txs)),
+        current: Math.max(0, poolBalance(pools, c.assetPoolId, balances)),
         target: c.targetAmount,
         targetDate: c.targetDate,
         startDate: c.startDate
@@ -195,18 +239,26 @@ export interface EvaluatedGroup {
   targets: TargetSection[];
 }
 
-/** Evaluate every group in config order, pairing distribution + targets per group. */
+/**
+ * Evaluate every group in config order, pairing distribution + targets per group.
+ * Pass `from`/`to` to scope income, filterSum actuals, and goal balances to a period.
+ */
 export function evaluatePlan(
   groups: SectionGroup[],
   sections: Section[],
   txs: Transaction[],
-  pools: AssetPool[] = []
+  pools: AssetPool[] = [],
+  from?: string,
+  to?: string
 ): EvaluatedGroup[] {
+  // Build the account-balance index once and share it across every group, instead
+  // of re-scanning the transaction list inside each section/goal evaluation.
+  const balances = accountBalanceIndex(txs, to);
   return [...groups]
     .sort((a, b) => a.order - b.order)
     .map((group) => ({
       group,
-      distribution: evaluateDistribution(group, sections, txs, pools),
-      targets: evaluateTargets(sectionsOfGroup(group, sections), txs, pools)
+      distribution: evaluateDistribution(group, sections, txs, pools, from, to, balances),
+      targets: evaluateTargets(sectionsOfGroup(group, sections), txs, pools, to, balances)
     }));
 }

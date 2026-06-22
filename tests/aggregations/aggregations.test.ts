@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { summarize, categoryBreakdown, monthlyNets, accountsBalance } from '../../src/lib/aggregations';
-import type { Category, Transaction } from '../../src/lib/types';
+import {
+  summarize,
+  categoryBreakdown,
+  monthlyNets,
+  accountsBalance,
+  liquidBalance
+} from '../../src/lib/aggregations';
+import type { Category, StartingBalances, Transaction } from '../../src/lib/types';
 
 function makeTx(overrides: Partial<Transaction> = {}): Transaction {
   return {
@@ -37,6 +43,53 @@ describe('accountsBalance', () => {
     expect(accountsBalance(txs, ['a', 'b'])).toBe(249_000);
     expect(accountsBalance(txs, [])).toBe(0);
     expect(accountsBalance(txs, ['nope'])).toBe(0);
+  });
+});
+
+describe('liquidBalance', () => {
+  it('with no anchors, is the all-time cumulative net of every transaction', () => {
+    const txs = [
+      makeTx({ id: '1', amount: 300_000 }),
+      makeTx({ id: '2', amount: -100_000 }),
+      makeTx({ id: '3', amount: -50_000 })
+    ];
+    expect(liquidBalance(txs)).toBe(150_000);
+    expect(liquidBalance(txs, {})).toBe(150_000);
+  });
+
+  it('returns 0 with no transactions and no anchors', () => {
+    expect(liquidBalance([])).toBe(0);
+  });
+
+  it('adds an account anchor plus only that account\'s later transactions', () => {
+    const txs = [
+      makeTx({ id: '1', amount: -10_000, accountId: 'a', date: '2025-12-31' }), // before asOf → ignored
+      makeTx({ id: '2', amount: -20_000, accountId: 'a', date: '2026-01-01' }), // on asOf → counted
+      makeTx({ id: '3', amount: 5_000, accountId: 'a', date: '2026-02-01' }) // after → counted
+    ];
+    const anchors: StartingBalances = { a: { amount: 100_000, asOf: '2026-01-01' } };
+    // 100_000 - 20_000 + 5_000 = 85_000 (the 2025 row is baked into the anchor).
+    expect(liquidBalance(txs, anchors)).toBe(85_000);
+  });
+
+  it('anchors per account and falls back to cumulative for un-anchored ones', () => {
+    const txs = [
+      makeTx({ id: '1', amount: -20_000, accountId: 'a', date: '2026-02-01' }),
+      makeTx({ id: '2', amount: 7_000, accountId: 'b', date: '2026-02-01' }), // no anchor → cumulative
+      makeTx({ id: '3', amount: -1_000, accountId: null, date: '2026-02-01' }) // no anchor → cumulative
+    ];
+    const anchors: StartingBalances = { a: { amount: 100_000, asOf: '2026-01-01' } };
+    // a: 100_000 - 20_000 = 80_000; b: +7_000; none: -1_000 → 86_000
+    expect(liquidBalance(txs, anchors)).toBe(86_000);
+  });
+
+  it('anchors account-less transactions with the empty-string key', () => {
+    const txs = [
+      makeTx({ id: '1', amount: -3_000, accountId: null, date: '2026-02-01' }),
+      makeTx({ id: '2', amount: -9_000, accountId: null, date: '2025-01-01' }) // before asOf → ignored
+    ];
+    const anchors: StartingBalances = { '': { amount: 50_000, asOf: '2026-01-01' } };
+    expect(liquidBalance(txs, anchors)).toBe(47_000);
   });
 });
 
@@ -134,5 +187,31 @@ describe('monthlyNets', () => {
 
   it('returns empty for no transactions', () => {
     expect(monthlyNets([])).toHaveLength(0);
+  });
+});
+
+describe('input-identity memoization', () => {
+  const txs = [
+    makeTx({ id: '1', date: '2026-01-01', amount: 10000, categoryId: 'cat-food' }),
+    makeTx({ id: '2', date: '2026-02-01', amount: -5000, categoryId: 'cat-rent' })
+  ];
+
+  it('returns the same reference for repeat calls with the same array', () => {
+    expect(summarize(txs)).toBe(summarize(txs));
+    expect(monthlyNets(txs)).toBe(monthlyNets(txs));
+    expect(categoryBreakdown(txs, categories)).toBe(categoryBreakdown(txs, categories));
+    const starting: StartingBalances = {};
+    expect(liquidBalance(txs, starting)).toBe(liquidBalance(txs, starting));
+  });
+
+  it('recomputes (equal value) when the array reference changes', () => {
+    const a = summarize(txs);
+    const b = summarize([...txs]);
+    expect(b).not.toBe(a);
+    expect(b).toEqual(a);
+    const m = categoryBreakdown(txs, categories);
+    const m2 = categoryBreakdown([...txs], categories);
+    expect(m2).not.toBe(m);
+    expect(m2).toEqual(m);
   });
 });

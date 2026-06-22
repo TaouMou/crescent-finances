@@ -13,7 +13,7 @@
   --c-accent: 13 168 130;     /* #0DA882 vivid teal */
   --c-paper-deep: 222 216 204; /* #DED8CC a touch darker than paper */
 
-  --c-income: 26 158 111;     /* #1A9E6F vivid green */
+  --c-income: 34 154 84;      /* #229A54 grass green — hue-separated from teal accent */
   --c-expense: 208 56 45;     /* #D0382D vivid red */
   --c-warn: 212 152 32;       /* #D49820 vivid amber */
 
@@ -23,15 +23,33 @@
   --dur-base: 200ms;
   --dur-slow: 250ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Shadcn-svelte semantic aliases (channel triples, aliased from --c-*) ── */
+  --background: var(--c-paper);
+  --foreground: var(--c-ink);
+  --card: var(--c-surface);
+  --card-foreground: var(--c-ink);
+  --popover: var(--c-surface);
+  --popover-foreground: var(--c-ink);
+  --primary: var(--c-accent);
+  --primary-foreground: 255 255 255;
+  --secondary: var(--c-paper-deep);
+  --secondary-foreground: var(--c-ink);
+  --destructive: var(--c-expense);
+  --destructive-foreground: 255 255 255;
+  --border: var(--c-hairline);
+  --input: var(--c-hairline);
+  --ring: var(--c-accent);
+  --radius: 8px;
 }
 
 .dark {
-  --c-paper: 19 22 24;        /* #131618 */
-  --c-paper-deep: 13 15 17;   /* darker than paper, for the bg gradient */
-  --c-surface: 27 31 34;      /* #1B1F22 */
-  --c-ink: 232 234 233;       /* #E8EAE9 */
-  --c-muted: 138 148 155;     /* #8A949B */
-  --c-hairline: 42 47 51;     /* #2A2F33 */
+  --c-paper: 24 21 19;        /* #181513 warm dark */
+  --c-paper-deep: 16 13 11;   /* #100D0B darker warm, for bg gradient */
+  --c-surface: 32 29 26;      /* #201D1A warm dark surface */
+  --c-ink: 233 231 228;       /* #E9E7E4 warm white */
+  --c-muted: 138 145 140;     /* #8A918C warm-neutral muted */
+  --c-hairline: 50 46 42;     /* #322E2A warm hairline */
   --c-accent: 61 161 146;     /* #3DA192 */
 
   --c-income: 75 165 124;
@@ -40,6 +58,9 @@
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 22px -6px rgb(0 0 0 / 0.5),
     0 18px 40px -12px rgb(0 0 0 / 0.45);
+
+  /* Dark-mode overrides for semantic tokens that don't alias from --c-* */
+  --secondary: 44 40 37;      /* #2C2825 warm secondary */
 }
 
 @media (prefers-reduced-motion: reduce) {

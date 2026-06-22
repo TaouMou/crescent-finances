@@ -2,12 +2,22 @@
   import { DownloadSimple, UploadSimple, Check, Plus, Trash, Warning, Sparkle, Cloud, ArrowsClockwise } from 'phosphor-svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import ColorField from '$lib/components/ui/ColorField.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import {
+    Select,
+    SelectTrigger,
+    SelectContent,
+    SelectItem,
+    SelectValue
+  } from '$lib/components/ui/select';
   import { config } from '$lib/stores/config';
   import { transactions } from '$lib/stores/transactions';
+  import { balances } from '$lib/stores/balances';
   import { demoMode } from '$lib/stores/demo';
   import { vault } from '$lib/stores/vault';
   import { cryptoWorker } from '$lib/workers/cryptoClient';
-  import { vaultRepo, transactionRepo, configRepo, dateBucketOf } from '$lib/db/repos';
+  import { vaultRepo, transactionRepo, configRepo, balanceRepo, dateBucketOf } from '$lib/db/repos';
   import {
     serializeConfigTemplate,
     parseConfigTemplate,
@@ -16,9 +26,10 @@
     parseBackup
   } from '$lib/config/backup';
   import { starterCategories, starterRules } from '$lib/config/schema';
+  import { buildStartingBalances, balancesEqual, type BalanceRowDraft } from '$lib/balances/form';
   import { syncStore } from '$lib/stores/sync';
   import { loadClientId } from '$lib/sync/gdrive';
-  import type { AppConfig, Transaction } from '$lib/types';
+  import type { AppConfig, StartingBalances, Transaction } from '$lib/types';
 
   let savedAt = $state<string | null>(null);
   let importError = $state<string | null>(null);
@@ -124,6 +135,21 @@
   let newAccName = $state('');
   let newAccKind = $state<'bank' | 'cash' | 'card' | 'savings'>('bank');
 
+  // Passed to each Select's `items` so the trigger shows the friendly label
+  // immediately; without it bits-ui shows the raw value (e.g. "bank") until the
+  // dropdown is first opened.
+  const accountKindItems = [
+    { value: 'bank', label: 'Bank' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'card', label: 'Card' },
+    { value: 'savings', label: 'Savings' }
+  ];
+  const anomalyLevelItems = [
+    { value: 'high', label: 'High — flag more' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low — only big surprises' }
+  ];
+
   function addAccount() {
     const name = newAccName.trim();
     if (!name) return;
@@ -146,6 +172,71 @@
       // Drop the account from any pool that referenced it.
       assetPools: c.assetPools.map((p) => ({ ...p, accountIds: p.accountIds.filter((x) => x !== id) }))
     }));
+  }
+
+  // ----- starting balances (encrypted, never in config) -----
+  // `baseline` is the persisted map; `rows` holds only the keys the user has
+  // edited. Saving is explicit (Confirm changes) and builds a plain object so
+  // the worker can structured-clone it (a $state proxy can't be — that silent
+  // DataCloneError is why balances never saved before).
+  let baseline = $state<StartingBalances>({});
+  let rows = $state<Record<string, BalanceRowDraft>>({});
+  let balancesLoaded = $state(false);
+  let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let saveError = $state<string | null>(null);
+
+  $effect(() => {
+    if (balancesLoaded) return;
+    balances.load().then((b) => {
+      baseline = structuredClone(b);
+      balancesLoaded = true;
+    });
+  });
+
+  // Rows: one per account, plus a catch-all for account-less transactions.
+  const balanceRows = $derived([
+    ...($config?.accounts ?? []).map((a) => ({ key: a.id, name: a.name })),
+    { key: '', name: 'Unassigned (no account)' }
+  ]);
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function baseRow(key: string): BalanceRowDraft {
+    const sb = baseline[key];
+    return { amountStr: sb ? String(sb.amount / 100) : '', asOf: sb?.asOf ?? '' };
+  }
+  const amountValue = (key: string): string => (rows[key] ?? baseRow(key)).amountStr;
+  const dateValue = (key: string): string => (rows[key] ?? baseRow(key)).asOf;
+
+  function setRow(key: string, field: keyof BalanceRowDraft, value: string) {
+    rows[key] = { ...(rows[key] ?? baseRow(key)), [field]: value };
+    if (saveState !== 'idle') saveState = 'idle';
+  }
+
+  // The full edited map (edited rows over the persisted baseline).
+  function currentMap(): StartingBalances {
+    const merged: Record<string, BalanceRowDraft> = {};
+    for (const r of balanceRows) merged[r.key] = rows[r.key] ?? baseRow(r.key);
+    return buildStartingBalances(merged, today());
+  }
+
+  const dirty = $derived(balancesLoaded && !balancesEqual(currentMap(), baseline));
+
+  async function confirmBalances() {
+    if (!dirty) return;
+    saveState = 'saving';
+    saveError = null;
+    try {
+      const next = currentMap(); // fresh plain object — safe to post to the worker
+      await balances.save(next);
+      baseline = next;
+      rows = {};
+      saveState = 'saved';
+      setTimeout(() => saveState === 'saved' && (saveState = 'idle'), 2500);
+    } catch (err) {
+      saveState = 'error';
+      saveError = err instanceof Error ? err.message : 'Could not save balances.';
+    }
   }
 
   // ----- asset pools -----
@@ -194,11 +285,13 @@
         return;
       }
       const stored = await transactionRepo.allEncrypted();
+      const balancesBlob = await balanceRepo.getBlob();
       const backup = buildBackup({
         config: $config,
         kdf: { saltB64: material.saltB64, iterations: material.iterations },
         verifier: material.verifier,
-        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct }))
+        transactions: stored.map((s) => ({ fingerprint: s.fingerprint, iv: s.blob.iv, ct: s.blob.ct })),
+        balances: balancesBlob ?? undefined
       });
       const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -244,6 +337,7 @@
         verifier: backup.verifier
       });
       await configRepo.save(backup.config);
+      if (backup.balances) await balanceRepo.saveBlob(backup.balances);
       await transactionRepo.clear();
       if (txs.length) {
         await transactionRepo.bulkUpdateBlobs(
@@ -290,9 +384,18 @@
     patch((c) => ({ ...c, meta: { ...c.meta, locale: v } }));
   }
 
-  // ----- anomaly thresholds (stored only; detection ships in a later update) -----
+  // ----- anomaly thresholds -----
   function setAnomaly(key: keyof AppConfig['settings']['anomaly'], v: number) {
     patch((c) => ({ ...c, settings: { ...c.settings, anomaly: { ...c.settings.anomaly, [key]: v } } }));
+  }
+
+  // "Sensitivity" is a friendlier face for the MAD multiplier: a lower k flags
+  // more (higher sensitivity), a higher k only flags bigger surprises.
+  const LEVEL_TO_MADK: Record<string, number> = { high: 2, medium: 3, low: 4 };
+  function madKLevel(k: number): 'high' | 'medium' | 'low' {
+    if (k <= 2.5) return 'high';
+    if (k < 3.5) return 'medium';
+    return 'low';
   }
 
   // ----- config template export / import (plaintext, financial-data-free) -----
@@ -322,9 +425,6 @@
       if (fileInput) fileInput.value = '';
     }
   }
-
-  const inputCls =
-    'h-9 rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50';
 </script>
 
 <div class="mx-auto max-w-[720px] space-y-6 px-4 py-6 sm:p-6">
@@ -344,15 +444,15 @@
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="flex flex-col gap-1 sm:col-span-2">
         <span class="text-xs text-muted">Configuration name</span>
-        <input type="text" value={$config?.meta.name ?? ''} onchange={(e) => setName(e.currentTarget.value)} class={inputCls} />
+        <Input type="text" value={$config?.meta.name ?? ''} onchange={(e) => setName(e.currentTarget.value)} />
       </label>
       <label class="flex flex-col gap-1">
         <span class="text-xs text-muted">Currency (ISO code)</span>
-        <input type="text" value={$config?.meta.currency ?? ''} onchange={(e) => setCurrency(e.currentTarget.value.trim())} placeholder="EUR" class={inputCls} />
+        <Input type="text" value={$config?.meta.currency ?? ''} onchange={(e) => setCurrency(e.currentTarget.value.trim())} placeholder="EUR" />
       </label>
       <label class="flex flex-col gap-1">
         <span class="text-xs text-muted">Locale (BCP-47)</span>
-        <input type="text" value={$config?.meta.locale ?? ''} onchange={(e) => setLocale(e.currentTarget.value.trim())} placeholder="en-US" class={inputCls} />
+        <Input type="text" value={$config?.meta.locale ?? ''} onchange={(e) => setLocale(e.currentTarget.value.trim())} placeholder="en-US" />
       </label>
     </div>
   </Card>
@@ -385,41 +485,13 @@
     </div>
   </Card>
 
-  <!-- Anomaly thresholds -->
-  <Card>
-    <h2 class="card-title mb-1">Anomaly detection</h2>
-    <p class="mb-4 text-xs text-muted">Flags categories whose spending this month is a robust outlier above their recent baseline. Shown on the dashboard Anomalies card.</p>
-    <div class="grid gap-4 sm:grid-cols-2">
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Baseline months</span>
-        <input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Threshold (%)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">Min absolute (minor units)</span>
-        <input type="number" min="0" value={$config?.settings.anomaly.minAbsolute ?? 5000} onchange={(e) => setAnomaly('minAbsolute', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted">MAD multiplier (k)</span>
-        <input type="number" min="0" step="0.1" value={$config?.settings.anomaly.madK ?? 3} onchange={(e) => setAnomaly('madK', Number(e.currentTarget.value))} class={inputCls} />
-      </label>
-    </div>
-  </Card>
-
   <!-- Categories -->
   <Card>
     <div class="mb-1 flex items-center justify-between gap-2">
       <h2 class="card-title">Categories</h2>
-      <button
-        class="press flex h-8 items-center gap-1.5 rounded-control border border-hairline px-2.5 text-xs text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        onclick={addStarterSet}
-        title="Add a starter set of categories and matching rules"
-      >
+      <Button variant="outline" size="sm" class="gap-1.5 px-2.5" onclick={addStarterSet} title="Add a starter set of categories and matching rules">
         <Sparkle class="h-3.5 w-3.5" /> Add starter set
-      </button>
+      </Button>
     </div>
     <p class="mb-4 text-xs text-muted">
       Categories group your spending. Deleting one leaves its transactions uncategorized.
@@ -435,19 +507,21 @@
               label="{cat.name || 'Category'} color"
               class="h-8 w-9"
             />
-            <input
+            <Input
               type="text"
               value={cat.name}
               onchange={(e) => updateCategory(cat.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              class="h-8 min-w-0 flex-1 px-2.5"
             />
-            <button
-              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 shrink-0 text-muted hover:bg-red-500/10 hover:text-red-500"
               onclick={() => deleteCategory(cat.id)}
               title="Delete category"
             >
               <Trash class="h-4 w-4" />
-            </button>
+            </Button>
           </li>
         {/each}
       </ul>
@@ -458,21 +532,186 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
       <div class="flex flex-1 items-center gap-2">
         <ColorField bind:value={newCatColor} label="New category color" />
-        <input
+        <Input
           type="text"
           bind:value={newCatName}
           placeholder="New category name"
           onkeydown={(e) => e.key === 'Enter' && addCategory()}
-          class={inputCls + ' min-w-0 flex-1'}
+          class="min-w-0 flex-1"
         />
       </div>
-      <button
-        class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
-        onclick={addCategory}
-        disabled={!newCatName.trim()}
-      >
+      <Button onclick={addCategory} disabled={!newCatName.trim()} class="w-full sm:w-auto">
         <Plus class="h-4 w-4" /> Add
-      </button>
+      </Button>
+    </div>
+  </Card>
+
+  <!-- Accounts -->
+  <Card>
+    <h2 class="card-title mb-1">Accounts</h2>
+    <p class="mb-4 text-xs text-muted">Where transactions live. Group accounts into pools below to track balances and goals.</p>
+
+    {#if ($config?.accounts ?? []).length > 0}
+      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
+        {#each $config?.accounts ?? [] as acc (acc.id)}
+          <li class="flex items-center gap-2 py-2">
+            <Input
+              type="text"
+              value={acc.name}
+              onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
+              class="h-8 min-w-0 flex-1 px-2.5"
+            />
+            <Select type="single" items={accountKindItems} value={acc.kind} onValueChange={(v) => updateAccount(acc.id, 'kind', v)}>
+              <SelectTrigger class="h-8 w-28 shrink-0 py-0 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {#each accountKindItems as it (it.value)}
+                  <SelectItem value={it.value} label={it.label} />
+                {/each}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 shrink-0 text-muted hover:bg-red-500/10 hover:text-red-500"
+              onclick={() => deleteAccount(acc.id)}
+              title="Delete account"
+            >
+              <Trash class="h-4 w-4" />
+            </Button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="mb-4 text-sm text-muted">No accounts yet.</p>
+    {/if}
+
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class="w-full min-w-0 sm:flex-1" />
+      <div class="flex gap-2">
+        <Select type="single" items={accountKindItems} value={newAccKind} onValueChange={(v) => (newAccKind = v as 'bank' | 'cash' | 'card' | 'savings')}>
+          <SelectTrigger class="w-auto flex-1 sm:w-32 sm:flex-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {#each accountKindItems as it (it.value)}
+              <SelectItem value={it.value} label={it.label} />
+            {/each}
+          </SelectContent>
+        </Select>
+        <Button onclick={addAccount} disabled={!newAccName.trim()} class="flex-1 sm:flex-none">
+          <Plus class="h-4 w-4" /> Add
+        </Button>
+      </div>
+    </div>
+  </Card>
+
+  <!-- Account balances -->
+  <Card>
+    <h2 class="card-title mb-1">Account balances</h2>
+    <p class="mb-2 text-xs text-muted">
+      Your real balance for each account as of a date — the number your bank shows today is
+      easiest. The dashboard's <span class="font-medium text-ink">Liquid balance</span> is this
+      starting figure plus every transaction since, so it reflects the actual money on hand.
+      Stored encrypted; never in the shareable config or template. Leave an amount blank to clear
+      its anchor.
+    </p>
+    {#if ($config?.accounts ?? []).length === 0}
+      <p class="mb-4 text-xs text-warn">
+        No accounts yet — add your bank account in <span class="font-medium">Accounts</span> above,
+        then its balance will appear here.
+      </p>
+    {/if}
+
+    <ul class="divide-y divide-hairline border-y border-hairline">
+      {#each balanceRows as row (row.key)}
+        <li class="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+          <span class="min-w-0 flex-1 truncate text-sm text-ink">{row.name}</span>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
+                {$config?.meta.currency ?? ''}
+              </span>
+              <Input
+                type="text"
+                inputmode="decimal"
+                value={amountValue(row.key)}
+                oninput={(e) => setRow(row.key, 'amountStr', e.currentTarget.value)}
+                placeholder="0.00"
+                aria-label="{row.name} starting balance"
+                class="h-9 w-32 py-0 pl-12 pr-2.5 text-right"
+              />
+            </div>
+            <Input
+              type="date"
+              value={dateValue(row.key)}
+              oninput={(e) => setRow(row.key, 'asOf', e.currentTarget.value)}
+              aria-label="{row.name} balance date"
+              class="h-9 px-2.5"
+            />
+          </div>
+        </li>
+      {/each}
+    </ul>
+
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <Button onclick={confirmBalances} disabled={!dirty || saveState === 'saving'}>
+        <Check class="h-4 w-4" />
+        {saveState === 'saving' ? 'Saving…' : 'Confirm changes'}
+      </Button>
+      {#if saveState === 'saved'}
+        <span class="flex items-center gap-1 text-xs text-income"><Check class="h-3.5 w-3.5" /> Saved</span>
+      {:else if saveState === 'error'}
+        <span class="text-xs text-expense">{saveError}</span>
+      {:else if dirty}
+        <span class="text-xs text-muted">Unsaved changes</span>
+      {/if}
+    </div>
+  </Card>
+
+  <!-- Advanced settings (collapsed by default) -->
+  <details class="group">
+    <summary class="flex cursor-pointer select-none items-center gap-2 py-1 text-sm font-medium text-muted hover:text-ink">
+      <span class="transition-transform group-open:rotate-90">›</span>
+      Advanced settings
+    </summary>
+    <p class="mb-4 mt-1 pl-5 text-xs text-muted">
+      Anomaly tuning, tags, asset pools, backups, sync and reset. You can ignore these to start.
+    </p>
+    <div class="space-y-6">
+
+  <!-- Anomaly detection -->
+  <Card>
+    <h2 class="card-title mb-1">Anomaly detection</h2>
+    <p class="mb-4 text-xs text-muted">Flags a category when its spending this month jumps unusually above its recent months — surfaced on the dashboard Anomalies card.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Months to compare against</span>
+        <Input type="number" min="1" value={$config?.settings.anomaly.baselineMonths ?? 6} onchange={(e) => setAnomaly('baselineMonths', Number(e.currentTarget.value))} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum increase (%)</span>
+        <Input type="number" min="0" value={$config?.settings.anomaly.thresholdPct ?? 40} onchange={(e) => setAnomaly('thresholdPct', Number(e.currentTarget.value))} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Minimum amount ({$config?.meta.currency ?? ''})</span>
+        <Input type="number" min="0" step="0.01" value={($config?.settings.anomaly.minAbsolute ?? 5000) / 100} onchange={(e) => setAnomaly('minAbsolute', Math.round(parseFloat(e.currentTarget.value || '0') * 100))} />
+        <span class="text-[11px] text-muted/80">Ignore jumps smaller than this.</span>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted">Sensitivity</span>
+        <Select type="single" items={anomalyLevelItems} value={madKLevel($config?.settings.anomaly.madK ?? 3)} onValueChange={(v) => setAnomaly('madK', LEVEL_TO_MADK[v] ?? 3)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {#each anomalyLevelItems as it (it.value)}
+              <SelectItem value={it.value} label={it.label} />
+            {/each}
+          </SelectContent>
+        </Select>
+      </label>
     </div>
   </Card>
 
@@ -493,19 +732,21 @@
               label="{tag.name || 'Tag'} color"
               class="h-8 w-9"
             />
-            <input
+            <Input
               type="text"
               value={tag.name}
               onchange={(e) => updateTag(tag.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+              class="h-8 min-w-0 flex-1 px-2.5"
             />
-            <button
-              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 shrink-0 text-muted hover:bg-red-500/10 hover:text-red-500"
               onclick={() => deleteTag(tag.id)}
               title="Delete tag"
             >
               <Trash class="h-4 w-4" />
-            </button>
+            </Button>
           </li>
         {/each}
       </ul>
@@ -516,76 +757,17 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
       <div class="flex flex-1 items-center gap-2">
         <ColorField bind:value={newTagColor} label="New tag color" />
-        <input
+        <Input
           type="text"
           bind:value={newTagName}
           placeholder="New tag name"
           onkeydown={(e) => e.key === 'Enter' && addTag()}
-          class={inputCls + ' min-w-0 flex-1'}
+          class="min-w-0 flex-1"
         />
       </div>
-      <button
-        class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto"
-        onclick={addTag}
-        disabled={!newTagName.trim()}
-      >
+      <Button onclick={addTag} disabled={!newTagName.trim()} class="w-full sm:w-auto">
         <Plus class="h-4 w-4" /> Add
-      </button>
-    </div>
-  </Card>
-
-  <!-- Accounts -->
-  <Card>
-    <h2 class="card-title mb-1">Accounts</h2>
-    <p class="mb-4 text-xs text-muted">Where transactions live. Group accounts into pools below to track balances and goals.</p>
-
-    {#if ($config?.accounts ?? []).length > 0}
-      <ul class="mb-4 divide-y divide-hairline border-y border-hairline">
-        {#each $config?.accounts ?? [] as acc (acc.id)}
-          <li class="flex items-center gap-2 py-2">
-            <input
-              type="text"
-              value={acc.name}
-              onchange={(e) => updateAccount(acc.id, 'name', e.currentTarget.value.trim())}
-              class="h-8 min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            />
-            <select
-              value={acc.kind}
-              onchange={(e) => updateAccount(acc.id, 'kind', e.currentTarget.value)}
-              class="h-8 shrink-0 rounded-control border border-hairline bg-surface px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
-            >
-              <option value="bank">Bank</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="savings">Savings</option>
-            </select>
-            <button
-              class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20"
-              onclick={() => deleteAccount(acc.id)}
-              title="Delete account"
-            >
-              <Trash class="h-4 w-4" />
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="mb-4 text-sm text-muted">No accounts yet.</p>
-    {/if}
-
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <input type="text" bind:value={newAccName} placeholder="New account name" onkeydown={(e) => e.key === 'Enter' && addAccount()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
-      <div class="flex gap-2">
-        <select bind:value={newAccKind} class="h-9 flex-1 rounded-control border border-hairline bg-surface px-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50 sm:flex-none">
-          <option value="bank">Bank</option>
-          <option value="cash">Cash</option>
-          <option value="card">Card</option>
-          <option value="savings">Savings</option>
-        </select>
-        <button class="press flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:flex-none" onclick={addAccount} disabled={!newAccName.trim()}>
-          <Plus class="h-4 w-4" /> Add
-        </button>
-      </div>
+      </Button>
     </div>
   </Card>
 
@@ -603,15 +785,21 @@
         {#each $config?.assetPools ?? [] as pool (pool.id)}
           <li class="space-y-2">
             <div class="flex items-center gap-2">
-              <input
+              <Input
                 type="text"
                 value={pool.name}
                 onchange={(e) => updatePoolName(pool.id, e.currentTarget.value.trim())}
-                class="h-8 flex-1 rounded-control border border-hairline bg-surface px-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                class="h-8 flex-1 px-2.5 font-medium"
               />
-              <button class="press grid h-8 w-8 shrink-0 place-items-center rounded-control text-muted hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/20" onclick={() => deletePool(pool.id)} title="Delete pool">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8 shrink-0 text-muted hover:bg-red-500/10 hover:text-red-500"
+                onclick={() => deletePool(pool.id)}
+                title="Delete pool"
+              >
                 <Trash class="h-4 w-4" />
-              </button>
+              </Button>
             </div>
             {#if ($config?.accounts ?? []).length > 0}
               <div class="flex flex-wrap gap-x-4 gap-y-1.5 pl-1">
@@ -633,10 +821,10 @@
     {/if}
 
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <input type="text" bind:value={newPoolName} placeholder="New pool name" onkeydown={(e) => e.key === 'Enter' && addPool()} class={inputCls + ' w-full min-w-0 sm:flex-1'} />
-      <button class="press flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50 sm:w-auto" onclick={addPool} disabled={!newPoolName.trim()}>
+      <Input type="text" bind:value={newPoolName} placeholder="New pool name" onkeydown={(e) => e.key === 'Enter' && addPool()} class="w-full min-w-0 sm:flex-1" />
+      <Button onclick={addPool} disabled={!newPoolName.trim()} class="w-full sm:w-auto">
         <Plus class="h-4 w-4" /> Add
-      </button>
+      </Button>
     </div>
   </Card>
 
@@ -648,12 +836,12 @@
       transactions or balances. Importing replaces the current configuration.
     </p>
     <div class="flex flex-wrap items-center gap-2">
-      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={exportTemplate} disabled={!$config}>
+      <Button variant="outline" onclick={exportTemplate} disabled={!$config}>
         <DownloadSimple class="h-4 w-4" /> Export template
-      </button>
-      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => fileInput.click()}>
+      </Button>
+      <Button variant="outline" onclick={() => fileInput.click()}>
         <UploadSimple class="h-4 w-4" /> Import template
-      </button>
+      </Button>
       <input bind:this={fileInput} type="file" accept="application/json,.json" class="hidden" onchange={importTemplate} />
     </div>
     {#if importError}
@@ -669,12 +857,12 @@
       encrypted). Restore it on any device with the passphrase it was made with.
     </p>
     <div class="flex flex-wrap items-center gap-2">
-      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={exportBackup} disabled={!$config}>
+      <Button variant="outline" onclick={exportBackup} disabled={!$config}>
         <DownloadSimple class="h-4 w-4" /> Export backup
-      </button>
-      <button class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10" onclick={() => backupFile.click()}>
+      </Button>
+      <Button variant="outline" onclick={() => backupFile.click()}>
         <UploadSimple class="h-4 w-4" /> Choose backup file…
-      </button>
+      </Button>
       <input bind:this={backupFile} type="file" accept="application/json,.json" class="hidden" onchange={(e) => { restoreFile = e.currentTarget.files?.[0] ?? null; backupError = null; }} />
     </div>
 
@@ -685,19 +873,18 @@
           the configuration and all transactions on this device.
         </p>
         <div class="flex flex-col gap-2">
-          <input
+          <Input
             type="password"
             bind:value={restorePass}
             placeholder="Backup passphrase"
-            class="h-9 w-full rounded-control border border-hairline bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
           />
           <div class="flex gap-2">
-            <button class="press h-9 flex-1 rounded-control bg-accent px-3 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50" onclick={restoreBackup} disabled={restoring || !restorePass}>
+            <Button class="flex-1" onclick={restoreBackup} disabled={restoring || !restorePass}>
               {restoring ? 'Restoring…' : 'Restore & replace'}
-            </button>
-            <button class="press h-9 shrink-0 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5" onclick={() => { restoreFile = null; restorePass = ''; }}>
+            </Button>
+            <Button variant="outline" class="shrink-0" onclick={() => { restoreFile = null; restorePass = ''; }}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -734,20 +921,17 @@
           <p class="text-xs text-expense">{$syncStore.error}</p>
         {/if}
         <div class="flex flex-wrap gap-2">
-          <button
-            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:opacity-50"
+          <Button
+            variant="outline"
             onclick={() => syncStore.sync()}
             disabled={$syncStore.status === 'syncing'}
           >
             <ArrowsClockwise class="h-4 w-4 {$syncStore.status === 'syncing' ? 'animate-spin' : ''}" />
             {$syncStore.status === 'syncing' ? 'Syncing…' : 'Sync now'}
-          </button>
-          <button
-            class="press flex h-9 items-center gap-2 rounded-control border border-hairline px-3 text-sm text-muted hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            onclick={() => syncStore.disconnect()}
-          >
+          </Button>
+          <Button variant="outline" onclick={() => syncStore.disconnect()}>
             Disconnect
-          </button>
+          </Button>
         </div>
       </div>
     {:else}
@@ -763,25 +947,24 @@
           </ol>
         </details>
 
-        <input
+        <Input
           type="text"
           bind:value={syncClientId}
           placeholder="…apps.googleusercontent.com"
-          class="h-9 w-full rounded-control border border-hairline bg-surface px-3 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50"
+          class="placeholder:text-muted/60"
         />
 
         {#if $syncStore.error && !$syncStore.connected}
           <p class="text-xs text-expense">{$syncStore.error}</p>
         {/if}
 
-        <button
-          class="press flex h-9 items-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+        <Button
           onclick={connectDrive}
           disabled={!syncClientId.trim() || $syncStore.status === 'syncing'}
         >
           <Cloud class="h-4 w-4" />
           {$syncStore.status === 'syncing' ? 'Connecting…' : 'Connect Google Drive'}
-        </button>
+        </Button>
       </div>
     {/if}
   </Card>
@@ -802,18 +985,20 @@
           <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <span class="text-xs text-expense">Delete all {$txCount} transactions?</span>
             <div class="flex gap-2">
-              <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={clearTransactions}>Delete</button>
-              <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+              <Button variant="destructive" size="sm" onclick={clearTransactions}>Delete</Button>
+              <Button variant="outline" size="sm" onclick={() => (confirming = null)}>Cancel</Button>
             </div>
           </div>
         {:else}
-          <button
-            class="press h-8 shrink-0 rounded-control border border-expense/30 px-3 text-xs font-medium text-expense hover:bg-expense/10 disabled:opacity-40"
+          <Button
+            variant="outline"
+            size="sm"
+            class="shrink-0 border-expense/30 text-expense hover:bg-expense/10 hover:text-expense"
             onclick={() => (confirming = 'tx')}
             disabled={$txCount === 0}
           >
             Clear transactions
-          </button>
+          </Button>
         {/if}
       </div>
 
@@ -827,19 +1012,24 @@
           <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <span class="text-xs text-expense">Erase everything on this device?</span>
             <div class="flex gap-2">
-              <button class="press h-8 rounded-control bg-expense px-3 text-xs font-medium text-white hover:bg-expense/90" onclick={fullReset}>Erase</button>
-              <button class="press h-8 rounded-control border border-hairline px-3 text-xs text-muted hover:bg-ink/5" onclick={() => (confirming = null)}>Cancel</button>
+              <Button variant="destructive" size="sm" onclick={fullReset}>Erase</Button>
+              <Button variant="outline" size="sm" onclick={() => (confirming = null)}>Cancel</Button>
             </div>
           </div>
         {:else}
-          <button
-            class="press h-8 shrink-0 rounded-control border border-expense/30 px-3 text-xs font-medium text-expense hover:bg-expense/10"
+          <Button
+            variant="outline"
+            size="sm"
+            class="shrink-0 border-expense/30 text-expense hover:bg-expense/10 hover:text-expense"
             onclick={() => (confirming = 'all')}
           >
             Reset everything
-          </button>
+          </Button>
         {/if}
       </div>
     </div>
   </Card>
+
+    </div>
+  </details>
 </div>

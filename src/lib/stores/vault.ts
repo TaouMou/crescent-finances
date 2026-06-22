@@ -8,7 +8,8 @@
 import { get, writable } from 'svelte/store';
 import { cryptoWorker } from '$lib/workers/cryptoClient';
 import { configRepo, vaultRepo, type VaultMaterial } from '$lib/db/repos';
-import { emptyConfig, type ParsedConfig } from '$lib/config/schema';
+import { emptyConfig } from '$lib/config/defaults';
+import type { ParsedConfig } from '$lib/config/schema';
 import type { AppConfig } from '$lib/types';
 import { vaultTransition, type VaultStatus } from './vault-machine';
 

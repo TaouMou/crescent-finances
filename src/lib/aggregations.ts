@@ -3,7 +3,7 @@
  * All amounts in integer minor units (cents). Negative = expense.
  */
 
-import type { Category, Transaction } from '$lib/types';
+import type { Category, StartingBalances, Transaction } from '$lib/types';
 
 export interface PeriodSummary {
   income: number;
@@ -33,7 +33,21 @@ function inPeriod(tx: Transaction, from?: string, to?: string): boolean {
   return true;
 }
 
+/**
+ * The decrypted transaction array is replaced wholesale whenever the data
+ * changes (see stores/transactions.ts), so its identity is a sound cache key:
+ * same reference + same params ⇒ same result. Each aggregation keeps a one-entry
+ * memo, which collapses the repeat calls a single reactive flush makes — e.g.
+ * `summarize(txs, from, to)` runs once per group inside `evaluatePlan`. Callers
+ * never mutate the returned value in place, so handing back the cached object is
+ * safe.
+ */
+let _summarizeMemo: { txs: Transaction[]; from?: string; to?: string; out: PeriodSummary } | null =
+  null;
+
 export function summarize(txs: Transaction[], from?: string, to?: string): PeriodSummary {
+  if (_summarizeMemo && _summarizeMemo.txs === txs && _summarizeMemo.from === from && _summarizeMemo.to === to)
+    return _summarizeMemo.out;
   let income = 0;
   let spending = 0;
   for (const tx of txs) {
@@ -41,8 +55,14 @@ export function summarize(txs: Transaction[], from?: string, to?: string): Perio
     if (tx.amount > 0) income += tx.amount;
     else spending += tx.amount;
   }
-  return { income, spending: Math.abs(spending), net: income + spending };
+  const out = { income, spending: Math.abs(spending), net: income + spending };
+  _summarizeMemo = { txs, from, to, out };
+  return out;
 }
+
+let _breakdownMemo:
+  | { txs: Transaction[]; categories: Category[]; from?: string; to?: string; out: CategoryBreakdown[] }
+  | null = null;
 
 export function categoryBreakdown(
   txs: Transaction[],
@@ -50,6 +70,14 @@ export function categoryBreakdown(
   from?: string,
   to?: string
 ): CategoryBreakdown[] {
+  if (
+    _breakdownMemo &&
+    _breakdownMemo.txs === txs &&
+    _breakdownMemo.categories === categories &&
+    _breakdownMemo.from === from &&
+    _breakdownMemo.to === to
+  )
+    return _breakdownMemo.out;
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const totals = new Map<string | null, number>();
 
@@ -60,7 +88,7 @@ export function categoryBreakdown(
     totals.set(key, (totals.get(key) ?? 0) + Math.abs(tx.amount));
   }
 
-  return [...totals.entries()]
+  const out = [...totals.entries()]
     .sort(([, a], [, b]) => b - a)
     .map(([id, amount]) => {
       const cat = id ? catMap.get(id) : undefined;
@@ -71,6 +99,8 @@ export function categoryBreakdown(
         amount
       };
     });
+  _breakdownMemo = { txs, categories, from, to, out };
+  return out;
 }
 
 /**
@@ -88,7 +118,39 @@ export function accountsBalance(txs: Transaction[], accountIds: string[]): numbe
   return sum;
 }
 
+/**
+ * Current liquid balance — the real money on hand right now, independent of any
+ * selected period.
+ *
+ * For each account that has a starting balance, the balance is that anchor plus
+ * the signed sum of its transactions dated on/after the anchor date (earlier
+ * rows are already baked into the figure the user entered). Transactions whose
+ * account has NO anchor fall back to a plain cumulative sum (anchored at 0), so
+ * with zero configuration this is simply the all-time net of everything
+ * imported. The `''` key anchors account-less transactions (`accountId === null`).
+ */
+let _liquidMemo: { txs: Transaction[]; starting: StartingBalances; out: number } | null = null;
+
+export function liquidBalance(txs: Transaction[], starting: StartingBalances = {}): number {
+  if (_liquidMemo && _liquidMemo.txs === txs && _liquidMemo.starting === starting) return _liquidMemo.out;
+  let total = 0;
+  for (const sb of Object.values(starting)) total += sb.amount;
+  for (const tx of txs) {
+    const anchor = starting[tx.accountId ?? ''];
+    if (anchor) {
+      if (tx.date >= anchor.asOf) total += tx.amount;
+    } else {
+      total += tx.amount;
+    }
+  }
+  _liquidMemo = { txs, starting, out: total };
+  return total;
+}
+
+let _monthlyMemo: { txs: Transaction[]; out: MonthlyNet[] } | null = null;
+
 export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
+  if (_monthlyMemo && _monthlyMemo.txs === txs) return _monthlyMemo.out;
   const byBucket = new Map<string, { income: number; spending: number }>();
 
   for (const tx of txs) {
@@ -101,45 +163,11 @@ export function monthlyNets(txs: Transaction[]): MonthlyNet[] {
 
   const sorted = [...byBucket.entries()].sort(([a], [b]) => a.localeCompare(b));
   let cumulative = 0;
-  return sorted.map(([bucket, { income, spending }]) => {
+  const out = sorted.map(([bucket, { income, spending }]) => {
     const net = income + spending;
     cumulative += net;
     return { bucket, income, spending: Math.abs(spending), net, cumulative };
   });
-}
-
-/**
- * Daily cumulative net series for the line chart.
- * Returns one point per day in [from, to], carrying the running balance from
- * all transactions (including those before `from`).
- * Returns [] when there are no transactions in the selected range.
- */
-export function dailyCumulative(
-  txs: Transaction[],
-  from: string,
-  to: string
-): { t: number; value: number }[] {
-  if (txs.length === 0) return [];
-
-  const byDate = new Map<string, number>();
-  for (const tx of txs) {
-    byDate.set(tx.date, (byDate.get(tx.date) ?? 0) + tx.amount);
-  }
-
-  const hasInRange = [...byDate.keys()].some((d) => d >= from && d <= to);
-  if (!hasInRange) return [];
-
-  let cumulative = 0;
-  for (const [date, net] of byDate) {
-    if (date < from) cumulative += net;
-  }
-
-  const points: { t: number; value: number }[] = [];
-  const end = new Date(`${to}T00:00:00Z`);
-  for (let d = new Date(`${from}T00:00:00Z`); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().slice(0, 10);
-    cumulative += byDate.get(dateStr) ?? 0;
-    points.push({ t: Math.floor(d.getTime() / 1000), value: cumulative });
-  }
-  return points;
+  _monthlyMemo = { txs, out };
+  return out;
 }

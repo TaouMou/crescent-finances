@@ -12,7 +12,9 @@ export const META_KEYS = {
   saltB64: 'kdf.saltB64',
   iterations: 'kdf.iterations',
   verifier: 'kdf.verifier',
-  schemaVersion: 'schemaVersion'
+  schemaVersion: 'schemaVersion',
+  /** Encrypted blob of the user's per-account starting balances. */
+  balances: 'balances'
 } as const;
 
 export interface VaultMaterial {
@@ -126,6 +128,25 @@ export class ConfigRepo {
   }
 }
 
+/**
+ * Stores the user's per-account starting balances as a single ENCRYPTED blob in
+ * `meta`. Like transactions, the caller encrypts/decrypts in the worker; this
+ * repo only moves opaque blobs in and out. Wiped by VaultRepo.reset().
+ */
+export class BalanceRepo {
+  constructor(private database: CrescentDB = db) {}
+
+  async getBlob(): Promise<EncryptedBlob | null> {
+    const rec = await this.database.meta.get(META_KEYS.balances);
+    return (rec?.value as EncryptedBlob | undefined) ?? null;
+  }
+
+  async saveBlob(blob: EncryptedBlob): Promise<void> {
+    await this.database.meta.put({ key: META_KEYS.balances, value: blob });
+  }
+}
+
 export const vaultRepo = new VaultRepo();
 export const transactionRepo = new TransactionRepo();
 export const configRepo = new ConfigRepo();
+export const balanceRepo = new BalanceRepo();
